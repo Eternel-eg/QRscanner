@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SyncScan - Modern Attendance System</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- HTML5 QR Code Scanner -->
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <script>
@@ -44,914 +41,330 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
-        body { -webkit-tap-highlight-color: transparent; }
-        
-        /* Hide sections by default */
-        .view-section { display: none; }
-        .view-section.active { display: block; animation: fadeIn 0.3s ease-out; }
-
-        /* Scanner overrides for a cleaner look */
-        #reader { border: none !important; background: transparent; }
-        #reader__dashboard_section_csr span { color: #fff !important; }
-        #reader__dashboard_section_swaplink { color: #60a5fa !important; text-decoration: none; font-weight: 600; }
-        #reader button { background: #2563eb !important; color: white !important; border: none !important; border-radius: 0.5rem !important; padding: 0.5rem 1rem !important; font-weight: 600 !important; cursor: pointer; transition: all 0.2s; }
-        #reader button:hover { background: #1d4ed8 !important; }
-        
-        /* Toast Styles */
-        #toast-container { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; width: 90%; max-w: 400px; pointer-events: none; }
-        .toast { pointer-events: auto; padding: 1rem 1.25rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); display: flex; align-items: center; gap: 0.75rem; font-weight: 500; font-size: 0.875rem; animation: slideUp 0.3s ease-out forwards; border: 1px solid rgba(255,255,255,0.2); }
-        .toast.success { background: #10b981; color: white; }
-        .toast.error { background: #ef4444; color: white; }
-        .toast.info { background: #3b82f6; color: white; }
-        .toast.removing { animation: fadeOut 0.3s ease-in forwards; }
-        @keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        #reader__scan_region video { object-fit: cover !important; border-radius: 1rem; }
+        #reader { border: none !important; }
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col selection:bg-blue-200">
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen">
 
-    <!-- Toast Notifications Container -->
-    <div id="toast-container"></div>
+    <div id="loading-view" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6">
+        <div class="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-slate-500 font-medium animate-pulse">Initializing System...</p>
+    </div>
 
-    <!-- Navbar -->
-    <header class="bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div class="flex items-center gap-2 text-blue-600 font-bold text-xl cursor-pointer transition-transform active:scale-95" onclick="goHome()">
-            <div class="bg-blue-600 text-white p-1.5 rounded-lg"><i class="ph ph-qr-code text-xl"></i></div>
-            <span class="hidden sm:inline tracking-tight">SyncScan</span>
-            <span id="demo-badge" class="text-[10px] uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold ml-2 hidden border border-amber-200">Demo</span>
-        </div>
-        <div id="nav-user-controls" class="hidden flex items-center gap-3 sm:gap-4">
-            <div class="hidden sm:flex flex-col text-right">
-                <span class="text-xs text-slate-500 font-medium uppercase tracking-wide" id="nav-role">Role</span>
-                <span class="text-sm font-bold text-slate-800 leading-none" id="nav-username">User</span>
-            </div>
-            <button id="nav-scanner-btn" onclick="switchView('scanner-view')" class="hidden items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 active:scale-95 transition-all shadow-md">
-                <i class="ph ph-camera text-lg"></i> <span class="hidden sm:inline">Kiosk Mode</span>
-            </button>
-            <button onclick="handleLogout()" class="text-slate-400 hover:text-red-500 transition-colors p-2.5 rounded-xl hover:bg-red-50 active:scale-95 bg-slate-100 sm:bg-transparent">
-                <i class="ph ph-sign-out text-xl"></i>
-            </button>
-        </div>
-    </header>
+    <div id="toast-container" class="fixed top-6 left-1/2 -translate-x-1/2 z-[110] flex flex-col gap-2 w-full max-w-sm px-4"></div>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-
-        <!-- Loading View -->
-        <div id="loading-view" class="view-section active flex flex-col items-center justify-center mt-32 sm:mt-48">
-            <div class="relative w-16 h-16 mb-6">
-                <div class="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
-                <div class="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-            </div>
-            <p class="text-slate-500 font-semibold tracking-wide animate-pulse">Initializing System...</p>
-        </div>
-
-        <!-- 1. LOGIN VIEW -->
-        <div id="login-view" class="view-section max-w-md mx-auto mt-8 sm:mt-20">
-            <div class="bg-white p-8 sm:p-10 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100">
-                <div class="flex justify-center mb-6">
-                    <div class="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-inner">
-                        <i class="ph-fill ph-shield-check text-5xl text-blue-600"></i>
-                    </div>
-                </div>
-                <h2 class="text-2xl sm:text-3xl font-extrabold text-center text-slate-800 mb-2">Welcome Back</h2>
-                <p class="text-center text-slate-500 text-sm mb-8">Secure access to SyncScan attendance.</p>
-                
-                <div id="login-error" class="hidden mb-6 p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-medium text-center animate-pop-in flex items-center justify-center gap-2">
-                    <i class="ph-fill ph-warning-circle text-lg"></i> <span>Invalid credentials</span>
-                </div>
-                
-                <div id="login-demo-notice" class="hidden mb-6 p-5 bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl text-sm flex flex-col gap-3 shadow-sm">
-                    <div class="flex items-center gap-2 font-bold"><i class="ph-fill ph-flask text-lg"></i> Demo Credentials</div>
-                    <div class="grid grid-cols-2 gap-3 text-xs">
-                        <div class="bg-white p-3 rounded-xl border border-amber-100 shadow-sm flex flex-col"><span class="text-amber-500 mb-1">Admin</span><span class="font-mono font-bold text-slate-700">admin<br/>admin123</span></div>
-                        <div class="bg-white p-3 rounded-xl border border-amber-100 shadow-sm flex flex-col"><span class="text-blue-500 mb-1">User</span><span class="font-mono font-bold text-slate-700">john<br/>john123</span></div>
-                    </div>
-                </div>
-
-                <form onsubmit="handleLogin(event)" class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Username</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><i class="ph-fill ph-user"></i></div>
-                            <input type="text" id="username" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 rounded-xl border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="Enter username" required>
-                        </div>
+    <div class="max-w-md mx-auto min-h-screen flex flex-col relative pb-20">
+        
+        <header id="app-header" class="hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                        <i class="ph-bold ph-qr-code text-xl"></i>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Password</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><i class="ph-fill ph-lock-key"></i></div>
-                            <input type="password" id="password" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 rounded-xl border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium" placeholder="••••••••" required>
-                        </div>
+                        <h1 class="font-bold text-slate-800 leading-tight">SyncScan</h1>
+                        <p id="user-display" class="text-xs text-slate-500 font-medium"></p>
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-lg shadow-blue-600/30 mt-4">
-                        Secure Login
+                </div>
+                <button onclick="logout()" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="ph-bold ph-sign-out text-2xl"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 p-4 overflow-x-hidden">
+            
+            <section id="login-view" class="hidden animate-slide-up pt-12">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-slate-800 mb-2">Welcome Back</h2>
+                    <p class="text-slate-500">Sign in to manage attendance</p>
+                </div>
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-600 ml-1">Username</label>
+                        <input type="text" id="login-user" required class="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all shadow-sm">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-600 ml-1">Password</label>
+                        <input type="password" id="login-pass" required class="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all shadow-sm">
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-[0.98]">
+                        Sign In
                     </button>
                 </form>
-            </div>
-        </div>
+            </section>
 
-        <!-- 2. ADMIN DASHBOARD -->
-        <div id="admin-view" class="view-section space-y-6 sm:space-y-8 animate-fade-in">
-            <!-- Stats -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-5 hover:shadow-md transition-shadow">
-                    <div class="p-4 bg-indigo-50 rounded-2xl text-indigo-600"><i class="ph-fill ph-users-three text-3xl"></i></div>
-                    <div><p class="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Total Users</p><p id="stat-users" class="text-3xl font-black text-slate-800">0</p></div>
-                </div>
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-5 hover:shadow-md transition-shadow">
-                    <div class="p-4 bg-emerald-50 rounded-2xl text-emerald-600"><i class="ph-fill ph-chart-line-up text-3xl"></i></div>
-                    <div><p class="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Scans Today</p><p id="stat-scans" class="text-3xl font-black text-slate-800">0</p></div>
-                </div>
-                <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-[2rem] shadow-lg flex items-center gap-5 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all group" onclick="switchView('scanner-view')">
-                    <div class="p-4 bg-white/10 rounded-2xl text-white group-hover:bg-white/20 transition-colors"><i class="ph-fill ph-scan text-3xl"></i></div>
-                    <div><p class="text-sm text-slate-300 font-bold uppercase tracking-wider mb-1">Kiosk Mode</p><p class="text-xl font-black text-white flex items-center gap-2">Launch <i class="ph-bold ph-arrow-right"></i></p></div>
-                </div>
-            </div>
-
-            <!-- Tabs & Data -->
-            <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[500px]">
-                <div class="border-b border-slate-100 px-6 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
-                    <div class="flex gap-2 bg-slate-100 p-1 rounded-xl">
-                        <button onclick="setAdminTab('logs')" id="tab-btn-logs" class="px-5 py-2.5 rounded-lg font-bold text-sm bg-white text-blue-600 shadow-sm transition-all">Activity Logs</button>
-                        <button onclick="setAdminTab('users')" id="tab-btn-users" class="px-5 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-slate-800 transition-all">User Management</button>
-                    </div>
-                    
-                    <button id="action-btn-logs" onclick="exportCSV()" class="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-100 active:scale-95 transition-all">
-                        <i class="ph-bold ph-download-simple text-lg"></i> Export CSV
-                    </button>
-                    
-                    <label id="action-btn-users" class="hidden flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-100 active:scale-95 transition-all cursor-pointer">
-                        <i class="ph-bold ph-upload-simple text-lg"></i> Sync Data
-                        <input type="file" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />
-                    </label>
-                </div>
-
-                <div class="flex-1 overflow-auto p-2">
-                    <!-- Logs Table -->
-                    <table id="table-logs" class="w-full text-left text-sm border-collapse">
-                        <thead class="sticky top-0 bg-white shadow-sm z-10">
-                            <tr><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">User</th><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Time</th><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Action</th><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Status</th></tr>
-                        </thead>
-                        <tbody id="tbody-logs" class="divide-y divide-slate-50"></tbody>
-                    </table>
-                    
-                    <!-- Users Table -->
-                    <table id="table-users" class="w-full text-left text-sm border-collapse hidden">
-                        <thead class="sticky top-0 bg-white shadow-sm z-10">
-                            <tr><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">ID</th><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Name</th><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Username</th><th class="px-6 py-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Role</th></tr>
-                        </thead>
-                        <tbody id="tbody-users" class="divide-y divide-slate-50"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. USER DASHBOARD -->
-        <div id="user-view" class="view-section max-w-3xl mx-auto space-y-6 sm:space-y-8 animate-fade-in">
-            <div class="bg-white p-8 sm:p-12 rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 text-center flex flex-col items-center relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-blue-50 to-transparent"></div>
-                
-                <h2 class="text-3xl font-black text-slate-800 mb-2 relative z-10">Your Identity Pass</h2>
-                <p class="text-slate-500 mb-8 font-medium relative z-10">Present this code at the kiosk scanner.</p>
-                
-                <div class="p-5 bg-white border-8 border-slate-50 rounded-[2rem] shadow-sm mb-8 relative z-10 transform transition hover:scale-105 duration-300">
-                    <img id="user-qr-img" src="" alt="QR Code" class="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-xl" />
-                </div>
-                
-                <div class="bg-slate-50 px-8 py-4 rounded-2xl border border-slate-200 w-full max-w-sm flex justify-between items-center relative z-10">
-                    <div class="text-left">
-                        <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Employee ID</p>
-                        <p id="user-id-display" class="font-mono font-black text-xl text-slate-800 tracking-widest"></p>
-                    </div>
-                    <div class="bg-blue-100 text-blue-600 p-3 rounded-xl"><i class="ph-fill ph-identification-card text-2xl"></i></div>
-                </div>
-            </div>
-
-            <div class="bg-white p-6 sm:p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-                <h3 class="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                    <i class="ph-fill ph-clock-counter-clockwise text-blue-500"></i> Recent Activity
-                </h3>
-                <div id="user-history-container" class="space-y-3"></div>
-            </div>
-        </div>
-
-        <!-- 4. SCANNER KIOSK -->
-        <div id="scanner-view" class="view-section w-full max-w-4xl mx-auto animate-pop-in">
-            <div class="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-300/50 overflow-hidden relative border border-slate-100 flex flex-col md:flex-row">
-                
-                <!-- Left: Scanner Area -->
-                <div class="flex-1 relative bg-slate-900 flex flex-col">
-                    <!-- Top Bar -->
-                    <div class="p-6 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 w-full">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-blue-500 p-2 rounded-lg"><i class="ph-bold ph-scan text-white text-xl"></i></div>
-                            <div>
-                                <h2 class="text-white font-bold text-lg leading-tight">SyncScan Kiosk</h2>
-                                <p class="text-slate-300 text-xs font-medium"><span id="kiosk-clock">00:00:00</span></p>
-                            </div>
+            <section id="user-view" class="hidden space-y-6">
+                <div class="bg-white rounded-3xl overflow-hidden shadow-xl shadow-slate-200/60 border border-slate-100">
+                    <div id="reader" class="bg-slate-900 aspect-square"></div>
+                    <div id="scan-result" class="min-h-[140px] flex items-center justify-center border-t border-slate-50">
+                        <div class="p-12 text-center text-slate-400">
+                            <i class="ph-bold ph-qr-code text-6xl mb-4 opacity-20"></i>
+                            <p>Position QR code inside the frame</p>
                         </div>
-                        <button onclick="switchView('admin-view')" class="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl backdrop-blur-sm transition-all"><i class="ph-bold ph-x text-xl"></i></button>
                     </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                        <p class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Status</p>
+                        <p class="text-indigo-900 font-bold flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            Live Scanner
+                        </p>
+                    </div>
+                    <div class="bg-slate-100 p-4 rounded-2xl">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Session</p>
+                        <p id="today-count" class="text-slate-700 font-bold">0 Check-ins</p>
+                    </div>
+                </div>
+            </section>
 
-                    <!-- Camera Feed -->
-                    <div class="flex-1 flex flex-col items-center justify-center relative min-h-[400px] md:min-h-[600px] pt-20 pb-10 px-4">
-                        
-                        <!-- Segmented Mode Control (CRITICAL FOR LOGIC) -->
-                        <div class="flex p-1.5 space-x-1.5 bg-white/10 rounded-2xl border border-white/10 backdrop-blur-md w-full max-w-xs mx-auto mb-6 z-10 relative">
-                            <button id="btn-mode-in" onclick="setScannerMode('check-in')" class="flex-1 py-3 px-2 rounded-xl text-sm font-extrabold shadow-lg bg-emerald-500 text-white transition-all duration-300 transform scale-105">
-                                <i class="ph-bold ph-sign-in"></i> CHECK IN
-                            </button>
-                            <button id="btn-mode-out" onclick="setScannerMode('check-out')" class="flex-1 py-3 px-2 rounded-xl text-sm font-bold text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300">
-                                <i class="ph-bold ph-sign-out"></i> CHECK OUT
-                            </button>
-                        </div>
-
-                        <!-- Scanner Viewport -->
-                        <div class="w-full max-w-sm aspect-square relative rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white/10">
-                            <div id="reader" class="w-full h-full object-cover"></div>
-                            
-                            <!-- Scanning Laser Animation -->
-                            <div class="absolute inset-0 pointer-events-none z-10 flex flex-col items-center justify-center hidden" id="scanner-laser-container">
-                                <div class="w-3/4 h-0.5 bg-blue-500/80 shadow-[0_0_15px_3px_rgba(59,130,246,0.6)] animate-[slide_2s_ease-in-out_infinite_alternate]"></div>
-                            </div>
-                        </div>
-                        <p class="text-white/50 text-sm font-medium mt-6 tracking-wide text-center max-w-xs">Position QR code inside the frame to scan automatically.</p>
-
-                        <!-- FULL SCREEN OVERLAY RESULT -->
-                        <div id="scan-overlay" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center backdrop-blur-xl transition-all duration-300">
-                            <div id="scan-icon-container" class="p-6 rounded-full bg-white/20 mb-6 backdrop-blur-md shadow-2xl transform scale-0 transition-transform duration-500">
-                                <i id="scan-icon" class="text-white text-7xl md:text-8xl drop-shadow-lg"></i>
-                            </div>
-                            <h1 id="scan-message" class="text-white text-3xl md:text-5xl font-black mb-4 drop-shadow-md uppercase tracking-tight leading-tight"></h1>
-                            
-                            <div id="scan-user-card" class="mt-8 bg-white text-slate-900 w-full max-w-sm rounded-[2rem] p-6 shadow-2xl transform translate-y-10 opacity-0 transition-all duration-500 delay-100 hidden">
-                                <div class="w-16 h-16 bg-slate-100 rounded-full mx-auto flex items-center justify-center mb-4 text-3xl shadow-inner text-slate-400">
-                                    <i class="ph-fill ph-user"></i>
-                                </div>
-                                <p id="scan-user-name" class="text-2xl font-black mb-1"></p>
-                                <div class="bg-slate-100 inline-block px-4 py-1.5 rounded-lg">
-                                    <p id="scan-user-id" class="font-mono text-sm font-bold text-slate-500"></p>
-                                </div>
-                            </div>
-                       </div>
+            <section id="admin-view" class="hidden space-y-6 animate-fade-in">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                        <i class="ph-bold ph-users text-indigo-600 text-2xl mb-2"></i>
+                        <h4 class="text-slate-400 text-xs font-bold uppercase">Total Users</h4>
+                        <p id="stat-total" class="text-2xl font-black text-slate-800">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                        <i class="ph-bold ph-clock-counter-clockwise text-emerald-600 text-2xl mb-2"></i>
+                        <h4 class="text-slate-400 text-xs font-bold uppercase">Today</h4>
+                        <p id="stat-today" class="text-2xl font-black text-slate-800">0</p>
                     </div>
                 </div>
 
-                <!-- Right: Recent Logs -->
-                <div class="md:w-80 bg-slate-50 border-t md:border-t-0 md:border-l border-slate-200 flex flex-col h-64 md:h-auto">
-                    <div class="p-6 border-b border-slate-200 bg-white">
-                        <h4 class="font-black text-slate-800 text-lg flex items-center gap-2">
-                            <i class="ph-fill ph-clock-counter-clockwise text-blue-600"></i> Recent Scans
-                        </h4>
-                    </div>
-                    <div class="flex-1 overflow-y-auto p-4" id="scanner-recent-logs">
-                        <!-- Logs inject here -->
-                    </div>
+                <div class="bg-slate-200/50 p-1 rounded-2xl flex gap-1">
+                    <button onclick="setAdminTab('history')" id="tab-history" class="flex-1 py-2 rounded-xl text-sm font-bold transition-all bg-white text-slate-800 shadow-sm">History</button>
+                    <button onclick="setAdminTab('users')" id="tab-users" class="flex-1 py-2 rounded-xl text-sm font-bold transition-all text-slate-500">User List</button>
                 </div>
+
+                <div id="admin-history" class="space-y-4">
+                    <div id="log-list" class="space-y-3">
+                        </div>
+                </div>
+
+                <div id="admin-users" class="hidden space-y-4">
+                    <div class="flex gap-2">
+                        <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="handleCsvUpload(event)">
+                        <label for="csv-upload" id="csv-label" class="flex-1 bg-white border-2 border-dashed border-slate-200 p-4 rounded-2xl text-center cursor-pointer hover:border-indigo-400 transition-all">
+                            <i class="ph-bold ph-file-csv text-2xl text-slate-400 mb-1 block"></i>
+                            <span class="text-xs font-bold text-slate-500 uppercase">Sync CSV Data</span>
+                        </label>
+                    </div>
+                    <div id="user-list" class="space-y-3">
+                        </div>
+                </div>
+            </section>
+        </main>
+
+        <nav id="app-nav" class="hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-100 p-2 z-40">
+            <div class="max-w-md mx-auto flex gap-2">
+                <button onclick="switchView('user-view')" id="nav-scan" class="flex-1 flex flex-col items-center py-2 rounded-2xl transition-all text-indigo-600 bg-indigo-50">
+                    <i class="ph-fill ph-qr-code text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase">Scanner</span>
+                </button>
+                <button id="admin-only-btn" onclick="switchView('admin-view')" class="hidden flex-1 flex flex-col items-center py-2 rounded-2xl transition-all text-slate-400 hover:bg-slate-50">
+                    <i class="ph-bold ph-chart-bar text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase">Admin</span>
+                </button>
             </div>
-        </div>
+        </nav>
+    </div>
 
-    </main>
-
-    <!-- ========================================== -->
-    <!-- APPLICATION LOGIC (JavaScript)             -->
-    <!-- ========================================== -->
     <script>
-        // --- 1. CONFIGURATION ---
-        // PASTE YOUR GOOGLE SCRIPT URL HERE:
-        const SCRIPT_URL = ""; // Left empty to use Demo Mode by default
-        
-        // Custom keyframes for laser animation injected via JS to avoid tailwind arbitrary value conflicts
-        const style = document.createElement('style');
-        style.innerHTML = `@keyframes slide { 0% { transform: translateY(-100px); } 100% { transform: translateY(100px); } }`;
-        document.head.appendChild(style);
+        // --- CONFIGURATION ---
+        // REPLACE THIS URL with your Google Apps Script URL
+        const API_URL = 'https://script.google.com/macros/s/AKfycbz_9O7K0mFf0e3Xj8Z7w1w_8h0w9w8w8w8w/exec'; 
 
-        // --- 2. STATE ---
-        let appData = { users: [], scans: [] };
-        let currentUser = null;
-        let html5QrcodeScanner = null;
-        let isProcessingScan = false;
-        let pollingInterval = null;
-        let currentScannerMode = 'check-in'; // 'check-in' | 'check-out'
-        let audioContext = null;
+        let allUsers = [];
+        let allLogs = [];
+        let html5QrCode = null;
+        let isProcessing = false;
 
-        // --- Mock Data for Demo (Used if SCRIPT_URL is empty) ---
-        const hashPwd = (str) => {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash = hash & hash; }
-            return Math.abs(hash).toString(16);
-        };
-        let mockUsers = [
-            { userId: 'admin_001', username: 'admin', passwordHash: hashPwd('admin123'), name: 'System Administrator', role: 'admin' },
-            { userId: 'EMP-4092', username: 'john', passwordHash: hashPwd('john123'), name: 'John Doe', role: 'user' },
-            { userId: 'EMP-1102', username: 'jane', passwordHash: hashPwd('jane123'), name: 'Jane Smith', role: 'user' }
-        ];
-        let mockScans = [];
-
-        // --- 3. CORE LOGIC ---
-        
-        // Initialize App
+        // --- CORE SYSTEM ---
         async function init() {
-            if (!SCRIPT_URL) {
-                document.getElementById('demo-badge').classList.remove('hidden');
-                document.getElementById('login-demo-notice').classList.remove('hidden');
+            try {
+                await fetchData();
+                checkAuth();
+            } catch (e) {
+                showToast("System Error: Check API URL", "error");
+                console.error(e);
+            } finally {
+                document.getElementById('loading-view').classList.add('hidden');
             }
-            await fetchData();
-            switchView('login-view');
-            
-            // Start clock
-            setInterval(() => {
-                const clock = document.getElementById('kiosk-clock');
-                if(clock) clock.innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-            }, 1000);
-
-            // Poll data
-            pollingInterval = setInterval(fetchData, 15000); 
         }
 
-        // Data Fetching
         async function fetchData() {
             try {
-                const usersRes = await apiCall('getUsers');
-                const scansRes = await apiCall('getScans');
-                
-                if (usersRes.success) appData.users = usersRes.data;
-                if (scansRes.success) appData.scans = scansRes.data;
-                
-                if(document.querySelector('.view-section.active')) refreshActiveView();
-            } catch (e) {
-                console.error("Fetch Error:", e);
+                const data = await apiCall('getState');
+                allUsers = data.users || [];
+                allLogs = data.logs || [];
+                renderStats();
+                renderLogs();
+                renderUsers();
+            } catch (err) {
+                console.warn("Fetch failed, using local fallback if available");
             }
         }
 
-        // API Connector
-        async function apiCall(action, data = {}) {
-            if (SCRIPT_URL) {
-                try {
-                    const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action, ...data }) });
-                    return await res.json();
-                } catch (e) {
-                    showToast("Network Error. Check connection.", "error");
-                    return { success: false, message: e.message };
-                }
+        function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('syncscan_user'));
+            if (!user) {
+                switchView('login-view');
             } else {
-                // Mock behavior
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        if (action === 'getUsers') resolve({ success: true, data: [...mockUsers] });
-                        if (action === 'getScans') resolve({ success: true, data: [...mockScans] });
-                        if (action === 'addScan') {
-                            const newScan = { id: Date.now().toString(), ...data.scan };
-                            mockScans.push(newScan);
-                            resolve({ success: true, data: newScan });
-                        }
-                        if (action === 'uploadUsers') {
-                            data.users.forEach(u => {
-                                const idx = mockUsers.findIndex(x => x.userId === u.userId);
-                                if (idx >= 0) mockUsers[idx] = u; else mockUsers.push(u);
-                            });
-                            resolve({ success: true });
-                        }
-                    }, 200);
+                document.getElementById('app-header').classList.remove('hidden');
+                document.getElementById('app-nav').classList.remove('hidden');
+                document.getElementById('user-display').innerText = `${user.name} (${user.role})`;
+                
+                if (user.role === 'admin') {
+                    document.getElementById('admin-only-btn').classList.remove('hidden');
+                }
+                
+                switchView(user.role === 'admin' ? 'admin-view' : 'user-view');
+            }
+        }
+
+        // --- SCANNER LOGIC ---
+        async function onScanSuccess(decodedText) {
+            if (isProcessing) return;
+            isProcessing = true;
+            
+            try {
+                // HANDLE WEDDING GUEST FORMAT: "User ID: GUEST-XXXX"
+                let userId = decodedText;
+                if (decodedText.startsWith('User ID: ')) {
+                    userId = decodedText.replace('User ID: ', '').trim();
+                } else if (decodedText.includes('id=')) {
+                    // Handle URL format if needed
+                    try { userId = new URL(decodedText).searchParams.get('id'); } catch(e) {}
+                }
+                
+                const user = allUsers.find(u => u.userId === userId);
+                if (!user) throw new Error("ID not found in registry");
+                
+                await apiCall('logAttendance', { userId: user.userId, name: user.name });
+                
+                const resultDiv = document.getElementById('scan-result');
+                resultDiv.innerHTML = `
+                    <div class="p-6 text-center animate-pop-in">
+                        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-green-100">
+                            <i class="ph-bold ph-check text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800">Welcome, ${user.name}!</h3>
+                        <p class="text-sm text-slate-500 italic">Check-in confirmed</p>
+                    </div>
+                `;
+                
+                showToast(`Check-in: ${user.name}`, "success");
+                await fetchData(); // Refresh stats
+
+                setTimeout(() => {
+                    resultDiv.innerHTML = `
+                        <div class="p-12 text-center text-slate-400">
+                            <i class="ph-bold ph-qr-code text-6xl mb-4 opacity-20"></i>
+                            <p>Ready to scan next guest</p>
+                        </div>
+                    `;
+                    isProcessing = false;
+                }, 3000);
+
+            } catch (err) {
+                showToast(err.message, "error");
+                setTimeout(() => { isProcessing = false; }, 2000);
+            }
+        }
+
+        function startScanner() {
+            if (html5QrCode) return;
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess
+            ).catch(err => {
+                showToast("Camera access denied", "error");
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode = null;
                 });
             }
         }
 
-        // Custom Toast Notification System
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            let icon = 'ph-info';
-            if (type === 'success') icon = 'ph-check-circle';
-            if (type === 'error') icon = 'ph-warning-circle';
-            
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `<i class="ph-fill ${icon} text-xl"></i> <span>${message}</span>`;
-            
-            container.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.classList.add('removing');
-                toast.addEventListener('animationend', () => toast.remove());
-            }, 3000);
-        }
-
-        // Navigation
+        // --- UI & NAVIGATION ---
         function switchView(viewId) {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
+            ['login-view', 'user-view', 'admin-view'].forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
             
-            // Cleanup scanner if leaving scanner view
-            if (viewId !== 'scanner-view' && html5QrcodeScanner) {
-                try { html5QrcodeScanner.clear(); } catch(e){}
-                html5QrcodeScanner = null;
-            }
+            // Nav styling
+            const isUser = viewId === 'user-view';
+            const isAdmin = viewId === 'admin-view';
+            
+            document.getElementById('nav-scan').className = isUser 
+                ? "flex-1 flex flex-col items-center py-2 rounded-2xl transition-all text-indigo-600 bg-indigo-50" 
+                : "flex-1 flex flex-col items-center py-2 rounded-2xl transition-all text-slate-400 hover:bg-slate-50";
+            
+            document.getElementById('admin-only-btn').className = isAdmin
+                ? "flex-1 flex flex-col items-center py-2 rounded-2xl transition-all text-indigo-600 bg-indigo-50" 
+                : "flex-1 flex flex-col items-center py-2 rounded-2xl transition-all text-slate-400 hover:bg-slate-50";
 
-            refreshActiveView(viewId);
+            if (isUser) startScanner(); else stopScanner();
         }
 
-        function goHome() {
-            if (!currentUser) switchView('login-view');
-            else switchView(currentUser.role === 'admin' ? 'admin-view' : 'user-view');
-        }
-
-        function refreshActiveView(viewId = null) {
-            const currentView = viewId || document.querySelector('.view-section.active').id;
-            
-            if (currentView === 'admin-view') renderAdminDashboard();
-            if (currentView === 'user-view') renderUserDashboard();
-            if (currentView === 'scanner-view' && !html5QrcodeScanner) initScanner();
-            if (currentView === 'scanner-view') renderScannerLogs();
-        }
-
-        // Auth
-        function handleLogin(e) {
-            e.preventDefault();
-            // Init audio context on first user gesture
-            if(!audioContext) initAudio();
-
-            const userInp = document.getElementById('username').value;
-            const passInp = document.getElementById('password').value;
-            const errDiv = document.getElementById('login-error');
-            
-            const user = appData.users.find(u => u.username === userInp && u.passwordHash === hashPwd(passInp));
-            
-            if (user) {
-                currentUser = user;
-                errDiv.classList.add('hidden');
-                
-                document.getElementById('nav-user-controls').classList.remove('hidden');
-                document.getElementById('nav-user-controls').classList.add('flex');
-                document.getElementById('nav-username').innerText = user.name;
-                document.getElementById('nav-role').innerText = user.role;
-                
-                if (user.role === 'admin') {
-                    document.getElementById('nav-scanner-btn').classList.remove('hidden');
-                    document.getElementById('nav-scanner-btn').classList.add('flex');
-                    switchView('admin-view');
-                } else {
-                    switchView('user-view');
-                }
-                showToast(`Welcome back, ${user.name.split(' ')[0]}`, 'success');
-            } else {
-                errDiv.classList.remove('hidden');
-                // Shake effect on error
-                errDiv.classList.remove('animate-pop-in');
-                void errDiv.offsetWidth; // trigger reflow
-                errDiv.classList.add('animate-pop-in');
-            }
-        }
-
-        function handleLogout() {
-            currentUser = null;
-            document.getElementById('nav-user-controls').classList.add('hidden');
-            document.getElementById('nav-scanner-btn').classList.add('hidden');
-            document.getElementById('nav-scanner-btn').classList.remove('flex');
-            
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
-            switchView('login-view');
-        }
-
-        // --- 4. ADMIN RENDERERS ---
         function setAdminTab(tab) {
-            const btnLogs = document.getElementById('tab-btn-logs');
-            const btnUsers = document.getElementById('tab-btn-users');
-            const tblLogs = document.getElementById('table-logs');
-            const tblUsers = document.getElementById('table-users');
-            const actLogs = document.getElementById('action-btn-logs');
-            const actUsers = document.getElementById('action-btn-users');
-
-            if(tab === 'logs') {
-                btnLogs.className = "px-5 py-2.5 rounded-lg font-bold text-sm bg-white text-blue-600 shadow-sm transition-all";
-                btnUsers.className = "px-5 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-slate-800 transition-all";
-                tblLogs.classList.remove('hidden'); tblUsers.classList.add('hidden');
-                actLogs.classList.remove('hidden'); actLogs.classList.add('flex');
-                actUsers.classList.add('hidden'); actUsers.classList.remove('flex');
-            } else {
-                btnUsers.className = "px-5 py-2.5 rounded-lg font-bold text-sm bg-white text-blue-600 shadow-sm transition-all";
-                btnLogs.className = "px-5 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-slate-800 transition-all";
-                tblUsers.classList.remove('hidden'); tblLogs.classList.add('hidden');
-                actUsers.classList.remove('hidden'); actUsers.classList.add('flex');
-                actLogs.classList.add('hidden'); actLogs.classList.remove('flex');
-            }
-        }
-
-        function renderAdminDashboard() {
-            document.getElementById('stat-users').innerText = appData.users.length;
+            const isHistory = tab === 'history';
+            document.getElementById('admin-history').classList.toggle('hidden', !isHistory);
+            document.getElementById('admin-users').classList.toggle('hidden', isHistory);
             
-            const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-            const todayScans = appData.scans.filter(s => parseInt(s.timestamp) > startOfDay.getTime() && s.status === 'success');
-            document.getElementById('stat-scans').innerText = todayScans.length;
-
-            // Render Logs Table
-            const sortedScans = [...appData.scans].sort((a,b) => parseInt(b.timestamp) - parseInt(a.timestamp)).slice(0, 50);
-            const logsHtml = sortedScans.length === 0 ? `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium"><i class="ph ph-folder-open text-4xl mb-2 block"></i> No records found</td></tr>` : 
-                sortedScans.map(scan => {
-                    const u = appData.users.find(x => x.userId === scan.userId);
-                    const isCheckIn = scan.type === 'check-in';
-                    const badgeClass = isCheckIn ? 'bg-emerald-100 text-emerald-800' : scan.type === 'check-out' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800';
-                    const statusHtml = scan.status === 'success' 
-                        ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs"><i class="ph-fill ph-check-circle"></i> Success</span>`
-                        : scan.status === 'warning'
-                        ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 font-bold text-xs"><i class="ph-fill ph-warning"></i> Warning</span>`
-                        : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-xs" title="${scan.message}"><i class="ph-fill ph-x-circle"></i> Error</span>`;
-                    
-                    return `<tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
-                        <td class="px-6 py-4 font-bold text-slate-800 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-normal"><i class="ph-fill ph-user"></i></div>
-                            ${u ? u.name : `<span class="text-slate-400 font-mono text-xs">${scan.userId}</span>`}
-                        </td>
-                        <td class="px-6 py-4 text-slate-500 font-medium">${new Date(parseInt(scan.timestamp)).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</td>
-                        <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${badgeClass}">${scan.type.replace('-error','').replace('-',' ')}</span></td>
-                        <td class="px-6 py-4">${statusHtml}</td>
-                    </tr>`;
-                }).join('');
-            document.getElementById('tbody-logs').innerHTML = logsHtml;
-
-            // Render Users Table
-            const usersHtml = appData.users.map(u => `
-                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
-                    <td class="px-6 py-4 text-slate-400 font-mono text-xs font-bold">${u.userId}</td>
-                    <td class="px-6 py-4 font-bold text-slate-800">${u.name}</td>
-                    <td class="px-6 py-4 text-slate-500 font-medium">${u.username}</td>
-                    <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}">${u.role}</span></td>
-                </tr>
-            `).join('');
-            document.getElementById('tbody-users').innerHTML = usersHtml;
+            document.getElementById('tab-history').className = isHistory 
+                ? "flex-1 py-2 rounded-xl text-sm font-bold transition-all bg-white text-slate-800 shadow-sm"
+                : "flex-1 py-2 rounded-xl text-sm font-bold transition-all text-slate-500";
+                
+            document.getElementById('tab-users').className = !isHistory 
+                ? "flex-1 py-2 rounded-xl text-sm font-bold transition-all bg-white text-slate-800 shadow-sm"
+                : "flex-1 py-2 rounded-xl text-sm font-bold transition-all text-slate-500";
         }
 
-        // --- 5. USER RENDERERS ---
-        function renderUserDashboard() {
-            if(!currentUser) return;
-            document.getElementById('user-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentUser.userId)}&margin=10`;
-            document.getElementById('user-id-display').innerText = currentUser.userId;
-
-            const myScans = appData.scans.filter(s => s.userId === currentUser.userId).sort((a,b) => parseInt(b.timestamp) - parseInt(a.timestamp)).slice(0,10);
-            
-            const historyHtml = myScans.length === 0 ? `<div class="text-center py-8"><i class="ph-fill ph-ghost text-4xl text-slate-300 mb-2 block"></i><p class="text-slate-400 font-medium">No activity yet.</p></div>` :
-                myScans.map(scan => {
-                    let icon, colorClass, statusTextClass;
-                    if (scan.status === 'success') {
-                        icon = scan.type === 'check-in' ? '<i class="ph-fill ph-sign-in text-emerald-500 text-3xl"></i>' : '<i class="ph-fill ph-sign-out text-amber-500 text-3xl"></i>';
-                        colorClass = scan.type === 'check-in' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100';
-                        statusTextClass = scan.type === 'check-in' ? 'text-emerald-600' : 'text-amber-600';
-                    } else if (scan.status === 'warning') {
-                        icon = '<i class="ph-fill ph-warning text-amber-500 text-3xl"></i>';
-                        colorClass = 'bg-amber-50 border-amber-100';
-                        statusTextClass = 'text-amber-600';
-                    } else {
-                        icon = '<i class="ph-fill ph-x-circle text-red-500 text-3xl"></i>';
-                        colorClass = 'bg-red-50 border-red-100';
-                        statusTextClass = 'text-red-600';
-                    }
-
-                    return `
-                        <div class="flex justify-between items-center p-5 rounded-2xl border ${colorClass} transition-transform hover:scale-[1.01]">
-                            <div class="flex items-center gap-4">
-                                <div class="bg-white p-2 rounded-xl shadow-sm">${icon}</div>
-                                <div>
-                                    <p class="font-black text-slate-800 capitalize text-lg leading-tight">${scan.type.replace('-error','').replace('-',' ')}</p>
-                                    <p class="text-sm text-slate-500 font-medium">${new Date(parseInt(scan.timestamp)).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</p>
-                                </div>
-                            </div>
-                            <div class="text-right flex flex-col items-end">
-                                <span class="text-xs font-black uppercase tracking-wider px-2 py-1 bg-white rounded-md shadow-sm ${statusTextClass}">${scan.status}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            document.getElementById('user-history-container').innerHTML = historyHtml;
+        // --- DATA RENDERING ---
+        function renderStats() {
+            document.getElementById('stat-total').innerText = allUsers.length;
+            const today = new Date().toLocaleDateString();
+            const todayLogs = allLogs.filter(l => new Date(l.timestamp).toLocaleDateString() === today);
+            document.getElementById('stat-today').innerText = todayLogs.length;
+            document.getElementById('today-count').innerText = `${todayLogs.length} Check-ins`;
         }
 
-        // --- 6. SCANNER LOGIC ---
-        function setScannerMode(mode) {
-            currentScannerMode = mode;
-            const btnIn = document.getElementById('btn-mode-in');
-            const btnOut = document.getElementById('btn-mode-out');
-            
-            if (mode === 'check-in') {
-                btnIn.className = "flex-1 py-3 px-2 rounded-xl text-sm font-extrabold shadow-lg bg-emerald-500 text-white transition-all duration-300 transform scale-105";
-                btnOut.className = "flex-1 py-3 px-2 rounded-xl text-sm font-bold text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300";
-            } else {
-                btnOut.className = "flex-1 py-3 px-2 rounded-xl text-sm font-extrabold shadow-lg bg-amber-500 text-white transition-all duration-300 transform scale-105";
-                btnIn.className = "flex-1 py-3 px-2 rounded-xl text-sm font-bold text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300";
-            }
-
-            // Ensure audio context is ready when user interacts
-            if(!audioContext) initAudio();
-        }
-
-        function initScanner() {
-            if(html5QrcodeScanner) return;
-            // Initialize audio on first scanner setup to bypass browser restrictions
-            if(!audioContext) initAudio();
-
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 }, 
-                aspectRatio: 1.0,
-                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-            }, false);
-            
-            html5QrcodeScanner.render(onScanSuccess, () => {});
-        }
-
-        async function onScanSuccess(decodedText) {
-            if (isProcessingScan) return;
-            isProcessingScan = true;
-            if (html5QrcodeScanner) html5QrcodeScanner.pause(true);
-
-            const userId = decodedText.trim();
-            const user = appData.users.find(u => u.userId === userId);
-
-            if (!user) {
-                await processScanResult('error', "User not found", null, 'invalid');
+        function renderLogs() {
+            const container = document.getElementById('log-list');
+            if (allLogs.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm italic">No activity recorded yet</div>';
                 return;
             }
-
-            // --- SMART STATUS LOGIC ---
-            // Get today's successful scans for this user
-            const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-            const userScansToday = appData.scans
-                .filter(s => s.userId === userId && parseInt(s.timestamp) > startOfDay.getTime() && (s.status === 'success' || s.status === 'warning'))
-                .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-
-            const lastScan = userScansToday[0];
-            const lastScanType = lastScan ? lastScan.type : null;
-
-            let resultType, msg, finalAction;
-
-            if (currentScannerMode === 'check-in') {
-                if (lastScanType === 'check-in') {
-                    // Trying to check in again without checking out
-                    resultType = 'error';
-                    msg = "Invalid action — wrong scan sequence";
-                    finalAction = 'check-in-error';
-                } else {
-                    // Valid Check-in (First of day, or after a checkout)
-                    resultType = 'success';
-                    msg = "Check-in successful";
-                    finalAction = 'check-in';
-                }
-            } else if (currentScannerMode === 'check-out') {
-                if (lastScanType !== 'check-in') {
-                    // Trying to check out without checking in first, or checking out twice
-                    resultType = 'error';
-                    msg = "Invalid action — wrong scan sequence";
-                    finalAction = 'check-out-error';
-                } else {
-                    // Valid Check-out
-                    resultType = 'warning'; // Per requirement: Second Scan (Check-Out) -> Yellow indicator
-                    msg = "Check-out successful";
-                    finalAction = 'check-out';
-                }
-            }
-
-            await processScanResult(resultType, msg, user, finalAction);
-        }
-
-        async function processScanResult(type, message, user, intendedAction) {
-            playSound(type);
-            showOverlay(type, message, user);
-
-            const now = Date.now();
-            
-            // Save to DB
-            await apiCall('addScan', {
-                scan: {
-                    userId: user ? user.userId : 'unknown',
-                    type: intendedAction,
-                    status: type === 'error' ? 'error' : (type === 'warning' ? 'warning' : 'success'),
-                    timestamp: now,
-                    message: message
-                }
-            });
-
-            await fetchData(); // Refresh data immediately
-
-            setTimeout(() => {
-                hideOverlay();
-                isProcessingScan = false;
-                if (html5QrcodeScanner) html5QrcodeScanner.resume();
-            }, 3500); // Give user enough time to see the big UI
-        }
-
-        function renderScannerLogs() {
-            const logsHtml = [...appData.scans].sort((a,b) => parseInt(b.timestamp) - parseInt(a.timestamp)).slice(0, 15).map(scan => {
-                const u = appData.users.find(x => x.userId === scan.userId);
-                
-                let dotColor = 'bg-slate-300';
-                let icon = '';
-                if (scan.status === 'success') { dotColor = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'; icon='<i class="ph-bold ph-sign-in text-emerald-600"></i>'; }
-                else if (scan.status === 'warning') { dotColor = 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]'; icon='<i class="ph-bold ph-sign-out text-amber-600"></i>'; }
-                else { dotColor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'; icon='<i class="ph-bold ph-warning-circle text-red-600"></i>'; }
-
-                const displayType = scan.type.replace('-error','');
-
-                return `<div class="flex justify-between items-center text-sm p-3 mb-2 rounded-xl bg-white border border-slate-100 shadow-sm animate-fade-in hover:shadow-md transition-shadow">
-                    <div class="flex gap-3 items-center">
-                        <span class="w-2.5 h-2.5 rounded-full ${dotColor}"></span>
-                        <div class="flex flex-col">
-                            <span class="font-bold text-slate-800">${u ? u.name : scan.userId}</span>
-                            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">${icon} ${displayType}</span>
+            container.innerHTML = allLogs.slice().reverse().map(log => `
+                <div class="bg-white p-4 rounded-2xl flex items-center justify-between border border-slate-100 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-indigo-600 font-bold">
+                            ${log.name.charAt(0)}
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">${log.name}</p>
+                            <p class="text-[10px] text-slate-400 font-medium uppercase">${new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                         </div>
                     </div>
-                    <div class="text-slate-500 font-mono text-xs font-bold bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                        ${new Date(parseInt(scan.timestamp)).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                    </div>
-                </div>`;
-            }).join('');
-            
-            const container = document.getElementById('scanner-recent-logs');
-            if(container) container.innerHTML = logsHtml || `<p class="text-center text-slate-400 mt-10 text-sm font-medium">Waiting for scans...</p>`;
+                    <div class="bg-green-50 text-green-600 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest">In</div>
+                </div>
+            `).join('');
         }
 
-        // --- Overlay & Audio (The 🟢 🟡 🔴 Requirements) ---
-        function showOverlay(type, message, user) {
-            const overlay = document.getElementById('scan-overlay');
-            const icon = document.getElementById('scan-icon');
-            const iconContainer = document.getElementById('scan-icon-container');
-            const userCard = document.getElementById('scan-user-card');
-            
-            overlay.classList.remove('hidden');
-            // Reset animations
-            overlay.className = "absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center backdrop-blur-xl transition-all duration-300 opacity-0";
-            iconContainer.className = "p-6 rounded-full bg-white/20 mb-6 backdrop-blur-md shadow-2xl transform scale-0 transition-transform duration-500";
-            userCard.className = "mt-8 bg-white text-slate-900 w-full max-w-sm rounded-[2rem] p-6 shadow-2xl transform translate-y-10 opacity-0 transition-all duration-500 delay-100 hidden";
-            
-            // Force reflow
-            void overlay.offsetWidth;
-            
-            overlay.classList.remove('opacity-0');
-            iconContainer.classList.remove('scale-0');
-            iconContainer.classList.add('scale-100', 'animate-bounce'); // Extra pop!
-            
-            if(type === 'success') {
-                // 🟢 Green / Success
-                overlay.classList.add('bg-emerald-500/95');
-                icon.className = "ph-bold ph-check text-white text-7xl md:text-8xl drop-shadow-lg";
-                document.getElementById('scan-message').className = "text-white text-3xl md:text-5xl font-black mb-4 drop-shadow-md uppercase tracking-tight leading-tight";
-            } else if(type === 'warning') {
-                // 🟡 Yellow / Warning (Used for Check-out as requested)
-                overlay.classList.add('bg-amber-400/95');
-                icon.className = "ph-bold ph-warning text-slate-900 text-7xl md:text-8xl drop-shadow-lg";
-                document.getElementById('scan-message').className = "text-slate-900 text-3xl md:text-5xl font-black mb-4 drop-shadow-md uppercase tracking-tight leading-tight";
-            } else {
-                // 🔴 Red / Error
-                overlay.classList.add('bg-red-500/95');
-                icon.className = "ph-bold ph-x text-white text-7xl md:text-8xl drop-shadow-lg";
-                document.getElementById('scan-message').className = "text-white text-3xl md:text-5xl font-black mb-4 drop-shadow-md uppercase tracking-tight leading-tight";
-            }
-
-            document.getElementById('scan-message').innerText = message;
-
-            if(user) {
-                userCard.classList.remove('hidden');
-                // Trigger animation
-                setTimeout(() => {
-                    userCard.classList.remove('translate-y-10', 'opacity-0');
-                }, 50);
-                document.getElementById('scan-user-name').innerText = user.name;
-                document.getElementById('scan-user-id').innerText = user.userId;
-            }
-        }
-
-        function hideOverlay() {
-            const overlay = document.getElementById('scan-overlay');
-            overlay.classList.add('opacity-0');
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-                overlay.className = "hidden absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center backdrop-blur-xl transition-all duration-300";
-            }, 300);
-        }
-
-        function initAudio() {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (AudioContext) {
-                    audioContext = new AudioContext();
-                    // Play a silent note to unlock on mobile
-                    const osc = audioContext.createOscillator();
-                    osc.connect(audioContext.destination);
-                    osc.start(); osc.stop(audioContext.currentTime + 0.001);
-                }
-            } catch(e) {}
-        }
-
-        function playSound(type) {
-            if (!audioContext) return;
-            if (audioContext.state === 'suspended') audioContext.resume();
-            
-            try {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                osc.connect(gain); 
-                gain.connect(audioContext.destination);
-                
-                const now = audioContext.currentTime;
-                
-                if (type === 'success') {
-                    // Happy double beep
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(600, now);
-                    osc.frequency.setValueAtTime(900, now + 0.1);
-                    gain.gain.setValueAtTime(0, now);
-                    gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                    osc.start(now); osc.stop(now + 0.3);
-                } else if (type === 'warning') {
-                    // Warning double beep
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.setValueAtTime(400, now + 0.2);
-                    gain.gain.setValueAtTime(0, now);
-                    gain.gain.linearRampToValueAtTime(0.2, now + 0.05);
-                    gain.gain.setValueAtTime(0, now + 0.15);
-                    gain.gain.linearRampToValueAtTime(0.2, now + 0.2);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                    osc.start(now); osc.stop(now + 0.4);
-                } else {
-                    // Error buzz
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(150, now);
-                    osc.frequency.linearRampToValueAtTime(100, now + 0.3);
-                    gain.gain.setValueAtTime(0, now);
-                    gain.gain.linearRampToValueAtTime(0.4, now + 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                    osc.start(now); osc.stop(now + 0.4);
-                }
-            } catch (e) { console.error("Audio playback error", e); }
-        }
-
-        // --- 7. EXPORT/IMPORT ---
-        function exportCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,Scan ID,User ID,Name,Date,Time,Status,Result\n";
-            appData.scans.forEach(row => {
-                const user = appData.users.find(u => u.userId === row.userId);
-                const date = new Date(parseInt(row.timestamp));
-                csvContent += `${row.id},${row.userId},"${user ? user.name : 'Unknown'}",${date.toLocaleDateString()},${date.toLocaleTimeString()},${row.type},${row.status}\n`;
-            });
-            const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `SyncScan_Export_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
-            showToast("Export successful!", "success");
-        }
-
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            
-            const btnLabel = document.getElementById('action-btn-users');
-            const originalHtml = btnLabel.innerHTML;
-            
-            reader.onload = async (event) => {
-                try {
-                    const rows = event.target.result.split('\n').map(r => r.trim()).filter(r => r);
-                    if (rows.length < 2) return showToast("Invalid CSV: File is empty or missing data.", "error");
-                    
-                    const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
-                    const uIndex = headers.indexOf('username'); const pIndex = headers.indexOf('password');
-                    const idIndex = headers.indexOf('id'); const nIndex = headers.indexOf('name'); const rIndex = headers.indexOf('role');
-                    
-                    if (uIndex === -1 || pIndex === -1 || idIndex === -1 || nIndex === -1) {
-                        return showToast("CSV missing columns. Require: ID, Username, Password, Name.", "error");
-                    }
-                    
-                    const newUsers = [];
-                    for (let i = 1; i < rows.length; i++) {
-                        const cols = rows[i].split(',').map(c => c.trim().replace(/^"|"$/g, '')); // basic quote strip
-                        if(!cols[idIndex]) continue;
-                        newUsers.push({
-                            userId: cols[idIndex], username: cols[uIndex], passwordHash: hashPwd(cols[pIndex]),
-                            name: cols[nIndex], role: cols[rIndex] || 'user', createdAt: Date.now()
-                        });
-                    }
-                    
-                    btnLabel.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> Syncing...';
-                    btnLabel.classList.add('opacity-75', 'pointer-events-none');
-                    
-                    await apiCall('uploadUsers', { users: newUsers });
-                    showToast(`Successfully synced ${newUsers.length} users.`, "success");
-                    await fetchData();
-                } catch (err) { 
-                    showToast("Upload failed: " + err.message, "error"); 
-                } finally {
-                    btnLabel.innerHTML = originalHtml;
-                    btnLabel.classList.remove('opacity-75', 'pointer-events-none');
-                    e.target.value = ''; // Reset input
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // Boot
-        window.onload = init;
-    </script>
-</body>
-</html>
+        function renderUsers() {
+            const container =
