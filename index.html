@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncScan - Attendance System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- HTML5 QR Code Scanner -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        /* Custom Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .zoom-in { animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        /* Hide sections by default */
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 font-sans min-h-screen selection:bg-blue-200">
+
+    <!-- Navbar -->
+    <header class="bg-white shadow-sm border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
+        <div class="flex items-center gap-2 text-blue-600 font-bold text-xl cursor-pointer" onclick="goHome()">
+            <i class="ph ph-qr-code text-2xl"></i> SyncScan
+            <span id="demo-badge" class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-medium ml-2 hidden">Demo Mode</span>
+        </div>
+        <div id="nav-user-controls" class="hidden flex items-center gap-4">
+            <span class="hidden sm:inline text-sm text-slate-500">
+                Welcome, <strong id="nav-username" class="text-slate-800">User</strong>
+            </span>
+            <button id="nav-scanner-btn" onclick="switchView('scanner-view')" class="hidden items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                <i class="ph ph-camera text-lg"></i> Kiosk
+            </button>
+            <button onclick="handleLogout()" class="text-slate-500 hover:text-red-600 transition p-2 rounded-full hover:bg-red-50">
+                <i class="ph ph-sign-out text-xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Loading View -->
+        <div id="loading-view" class="view-section active flex flex-col items-center justify-center mt-32">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-slate-500 font-medium">Connecting to system...</p>
+        </div>
+
+        <!-- 1. LOGIN VIEW -->
+        <div id="login-view" class="view-section max-w-md mx-auto mt-12 sm:mt-24 bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+            <div class="flex justify-center mb-6">
+                <div class="p-4 bg-blue-50 rounded-full">
+                    <i class="ph ph-shield-check text-4xl text-blue-600"></i>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold text-center text-slate-800 mb-8">Secure System Login</h2>
+            
+            <div id="login-error" class="hidden mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm text-center"></div>
+            
+            <div id="login-demo-notice" class="hidden mb-6 p-4 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-sm flex flex-col gap-2">
+                <strong>🧪 Demo Accounts:</strong>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-white p-2 rounded border border-amber-100"><b>Admin:</b><br/>admin / admin123</div>
+                    <div class="bg-white p-2 rounded border border-amber-100"><b>User:</b><br/>john / john123</div>
+                </div>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Enter username" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition shadow-md hover:shadow-lg">
+                    Authenticate
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. ADMIN DASHBOARD -->
+        <div id="admin-view" class="view-section space-y-6">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div class="p-4 bg-indigo-50 rounded-xl text-indigo-600"><i class="ph ph-users text-3xl"></i></div>
+                    <div><p class="text-sm text-slate-500 font-medium">Total Registered</p><p id="stat-users" class="text-2xl font-bold text-slate-800">0</p></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div class="p-4 bg-emerald-50 rounded-xl text-emerald-600"><i class="ph ph-activity text-3xl"></i></div>
+                    <div><p class="text-sm text-slate-500 font-medium">Scans Today</p><p id="stat-scans" class="text-2xl font-bold text-slate-800">0</p></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition" onclick="switchView('scanner-view')">
+                    <div class="p-4 bg-blue-50 rounded-xl text-blue-600"><i class="ph ph-qr-code text-3xl"></i></div>
+                    <div><p class="text-sm text-slate-500 font-medium">Kiosk Mode</p><p class="text-lg font-bold text-blue-600">Open Scanner &rarr;</p></div>
+                </div>
+            </div>
+
+            <!-- Tabs & Data -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex gap-4">
+                        <button onclick="setAdminTab('logs')" id="tab-btn-logs" class="font-semibold pb-2 border-b-2 border-blue-600 text-blue-600 transition">Activity Logs</button>
+                        <button onclick="setAdminTab('users')" id="tab-btn-users" class="font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition">User Management</button>
+                    </div>
+                    
+                    <button id="action-btn-logs" onclick="exportCSV()" class="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-100 transition">
+                        <i class="ph ph-download-simple text-lg"></i> Export CSV
+                    </button>
+                    
+                    <label id="action-btn-users" class="hidden flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-100 transition cursor-pointer">
+                        <i class="ph ph-upload-simple text-lg"></i> Sync Excel/CSV
+                        <input type="file" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />
+                    </label>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <!-- Logs Table -->
+                    <table id="table-logs" class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                            <tr><th class="px-6 py-4 font-semibold">User</th><th class="px-6 py-4 font-semibold">Time</th><th class="px-6 py-4 font-semibold">Action</th><th class="px-6 py-4 font-semibold">Status</th></tr>
+                        </thead>
+                        <tbody id="tbody-logs" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                    
+                    <!-- Users Table -->
+                    <table id="table-users" class="w-full text-left text-sm hidden">
+                        <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                            <tr><th class="px-6 py-4 font-semibold">ID</th><th class="px-6 py-4 font-semibold">Name</th><th class="px-6 py-4 font-semibold">Username</th><th class="px-6 py-4 font-semibold">Role</th></tr>
+                        </thead>
+                        <tbody id="tbody-users" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. USER DASHBOARD -->
+        <div id="user-view" class="view-section max-w-2xl mx-auto space-y-8">
+            <div class="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center flex flex-col items-center">
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">Your Identity Pass</h2>
+                <p class="text-slate-500 mb-8">Scan this code at the kiosk to check-in or out.</p>
+                <div class="p-4 bg-white border-4 border-slate-100 rounded-2xl shadow-sm mb-6">
+                    <img id="user-qr-img" src="" alt="QR Code" class="w-48 h-48 sm:w-64 sm:h-64 object-contain" />
+                </div>
+                <div class="bg-slate-50 px-6 py-3 rounded-xl border border-slate-200">
+                    <p class="text-sm text-slate-500">ID Number</p>
+                    <p id="user-id-display" class="font-mono font-bold text-lg text-slate-800 tracking-wider"></p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800 mb-4">My Scan History</h3>
+                <div id="user-history-container" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- 4. SCANNER KIOSK -->
+        <div id="scanner-view" class="view-section max-w-3xl mx-auto">
+            <div class="bg-white rounded-3xl shadow-xl overflow-hidden relative border border-slate-200">
+                
+                <div class="bg-slate-900 text-white p-4 flex justify-between items-center z-10 relative">
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-camera text-xl text-blue-400"></i>
+                        <span class="font-semibold tracking-wide">Kiosk Scanner</span>
+                    </div>
+                </div>
+
+                <div class="relative bg-black aspect-square sm:aspect-video flex items-center justify-center">
+                   <div id="reader" class="w-full max-w-lg mx-auto [&>div]:border-none [&>div]:!bg-transparent"></div>
+                   
+                   <!-- Overlay Result -->
+                   <div id="scan-overlay" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center">
+                        <i id="scan-icon" class="text-white text-8xl mb-4 drop-shadow-md"></i>
+                        <h1 id="scan-message" class="text-white text-4xl md:text-5xl font-black mb-2 drop-shadow-sm uppercase tracking-wider"></h1>
+                        <div id="scan-user-card" class="mt-6 bg-black/30 px-8 py-4 rounded-2xl backdrop-blur-sm text-white hidden">
+                            <p class="text-xl font-medium opacity-90">User Profile</p>
+                            <p id="scan-user-name" class="text-3xl font-bold"></p>
+                            <p id="scan-user-id" class="font-mono text-lg mt-1 opacity-75"></p>
+                        </div>
+                   </div>
+                </div>
+
+                <div class="p-6 bg-slate-50 border-t border-slate-200">
+                    <h4 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="ph ph-database text-xl text-blue-600"></i> Recent Kiosk Syncs
+                    </h4>
+                    <div id="scanner-recent-logs" class="space-y-2 h-40 overflow-y-auto pr-2"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- APPLICATION LOGIC (JavaScript)             -->
+    <!-- ========================================== -->
+    <script>
+        // --- 1. CONFIGURATION ---
+        // PASTE YOUR GOOGLE SCRIPT URL HERE:
+        const SCRIPT_URL = ""; 
+
+        // --- 2. STATE ---
+        let appData = { users: [], scans: [] };
+        let currentUser = null;
+        let html5QrcodeScanner = null;
+        let isProcessingScan = false;
+        let pollingInterval = null;
+
+        // --- Mock Data for Demo (Used if SCRIPT_URL is empty) ---
+        const hashPwd = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash = hash & hash; }
+            return Math.abs(hash).toString(16);
+        };
+        let mockUsers = [
+            { userId: 'admin_001', username: 'admin', passwordHash: hashPwd('admin123'), name: 'System Administrator', role: 'admin' },
+            { userId: 'user_001', username: 'john', passwordHash: hashPwd('john123'), name: 'John Doe', role: 'user' }
+        ];
+        let mockScans = [];
+
+        // --- 3. CORE LOGIC ---
+        
+        // Initialize App
+        async function init() {
+            if (!SCRIPT_URL) {
+                document.getElementById('demo-badge').classList.remove('hidden');
+                document.getElementById('login-demo-notice').classList.remove('hidden');
+            }
+            await fetchData();
+            switchView('login-view');
+            
+            // Start real-time polling
+            pollingInterval = setInterval(fetchData, 15000); 
+        }
+
+        // Data Fetching
+        async function fetchData() {
+            try {
+                const usersRes = await apiCall('getUsers');
+                const scansRes = await apiCall('getScans');
+                
+                if (usersRes.success) appData.users = usersRes.data;
+                if (scansRes.success) appData.scans = scansRes.data;
+                
+                refreshActiveView();
+            } catch (e) {
+                console.error("Fetch Error:", e);
+            }
+        }
+
+        // API Connector
+        async function apiCall(action, data = {}) {
+            if (SCRIPT_URL) {
+                const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action, ...data }) });
+                return await res.json();
+            } else {
+                // Mock behavior
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        if (action === 'getUsers') resolve({ success: true, data: [...mockUsers] });
+                        if (action === 'getScans') resolve({ success: true, data: [...mockScans] });
+                        if (action === 'addScan') {
+                            const newScan = { id: Date.now().toString(), ...data.scan };
+                            mockScans.push(newScan);
+                            resolve({ success: true, data: newScan });
+                        }
+                        if (action === 'uploadUsers') {
+                            data.users.forEach(u => {
+                                const idx = mockUsers.findIndex(x => x.userId === u.userId);
+                                if (idx >= 0) mockUsers[idx] = u; else mockUsers.push(u);
+                            });
+                            resolve({ success: true });
+                        }
+                    }, 200);
+                });
+            }
+        }
+
+        // Navigation
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            
+            // Cleanup scanner if leaving scanner view
+            if (viewId !== 'scanner-view' && html5QrcodeScanner) {
+                try { html5QrcodeScanner.clear(); } catch(e){}
+                html5QrcodeScanner = null;
+            }
+
+            refreshActiveView(viewId);
+        }
+
+        function goHome() {
+            if (!currentUser) switchView('login-view');
+            else switchView(currentUser.role === 'admin' ? 'admin-view' : 'user-view');
+        }
+
+        function refreshActiveView(viewId = null) {
+            const currentView = viewId || document.querySelector('.view-section.active').id;
+            
+            if (currentView === 'admin-view') renderAdminDashboard();
+            if (currentView === 'user-view') renderUserDashboard();
+            if (currentView === 'scanner-view' && !html5QrcodeScanner) initScanner();
+            if (currentView === 'scanner-view') renderScannerLogs();
+        }
+
+        // Auth
+        function handleLogin(e) {
+            e.preventDefault();
+            const userInp = document.getElementById('username').value;
+            const passInp = document.getElementById('password').value;
+            const errDiv = document.getElementById('login-error');
+            
+            const user = appData.users.find(u => u.username === userInp && u.passwordHash === hashPwd(passInp));
+            
+            if (user) {
+                currentUser = user;
+                errDiv.classList.add('hidden');
+                document.getElementById('nav-user-controls').classList.remove('hidden');
+                document.getElementById('nav-username').innerText = user.name;
+                
+                if (user.role === 'admin') {
+                    document.getElementById('nav-scanner-btn').classList.remove('hidden');
+                    document.getElementById('nav-scanner-btn').classList.add('flex');
+                    switchView('admin-view');
+                } else {
+                    switchView('user-view');
+                }
+            } else {
+                errDiv.innerText = "Invalid credentials";
+                errDiv.classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById('nav-user-controls').classList.add('hidden');
+            document.getElementById('nav-scanner-btn').classList.add('hidden');
+            document.getElementById('nav-scanner-btn').classList.remove('flex');
+            
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            switchView('login-view');
+        }
+
+        // --- 4. ADMIN RENDERERS ---
+        function setAdminTab(tab) {
+            if(tab === 'logs') {
+                document.getElementById('tab-btn-logs').className = "font-semibold pb-2 border-b-2 border-blue-600 text-blue-600 transition";
+                document.getElementById('tab-btn-users').className = "font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition";
+                document.getElementById('table-logs').classList.remove('hidden');
+                document.getElementById('table-users').classList.add('hidden');
+                document.getElementById('action-btn-logs').classList.remove('hidden');
+                document.getElementById('action-btn-users').classList.add('hidden');
+                document.getElementById('action-btn-logs').classList.add('flex');
+                document.getElementById('action-btn-users').classList.remove('flex');
+            } else {
+                document.getElementById('tab-btn-users').className = "font-semibold pb-2 border-b-2 border-blue-600 text-blue-600 transition";
+                document.getElementById('tab-btn-logs').className = "font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition";
+                document.getElementById('table-users').classList.remove('hidden');
+                document.getElementById('table-logs').classList.add('hidden');
+                document.getElementById('action-btn-users').classList.remove('hidden');
+                document.getElementById('action-btn-logs').classList.add('hidden');
+                document.getElementById('action-btn-users').classList.add('flex');
+                document.getElementById('action-btn-logs').classList.remove('flex');
+            }
+        }
+
+        function renderAdminDashboard() {
+            document.getElementById('stat-users').innerText = appData.users.length;
+            
+            const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+            const todayScans = appData.scans.filter(s => parseInt(s.timestamp) > startOfDay.getTime());
+            document.getElementById('stat-scans').innerText = todayScans.length;
+
+            // Render Logs Table
+            const sortedScans = [...appData.scans].sort((a,b) => parseInt(b.timestamp) - parseInt(a.timestamp)).slice(0, 50);
+            const logsHtml = sortedScans.length === 0 ? `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No scans recorded yet.</td></tr>` : 
+                sortedScans.map(scan => {
+                    const u = appData.users.find(x => x.userId === scan.userId);
+                    const isCheckIn = scan.type === 'check-in';
+                    const badgeClass = isCheckIn ? 'bg-blue-100 text-blue-800' : scan.type === 'check-out' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-800';
+                    const statusHtml = scan.status === 'success' 
+                        ? `<span class="flex items-center gap-1 text-emerald-600 font-medium"><i class="ph-fill ph-check-circle"></i> Success</span>`
+                        : `<span class="flex items-center gap-1 text-red-600 font-medium"><i class="ph-fill ph-x-circle"></i> ${scan.message}</span>`;
+                    
+                    return `<tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4 font-medium text-slate-800">${u ? u.name : scan.userId}</td>
+                        <td class="px-6 py-4 text-slate-500">${new Date(parseInt(scan.timestamp)).toLocaleString()}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 rounded-md text-xs font-bold uppercase ${badgeClass}">${scan.type}</span></td>
+                        <td class="px-6 py-4">${statusHtml}</td>
+                    </tr>`;
+                }).join('');
+            document.getElementById('tbody-logs').innerHTML = logsHtml;
+
+            // Render Users Table
+            const usersHtml = appData.users.map(u => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-6 py-4 text-slate-500 font-mono text-xs">${u.userId}</td>
+                    <td class="px-6 py-4 font-medium text-slate-800">${u.name}</td>
+                    <td class="px-6 py-4 text-slate-500">${u.username}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-md text-xs font-bold uppercase ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600'}">${u.role}</span></td>
+                </tr>
+            `).join('');
+            document.getElementById('tbody-users').innerHTML = usersHtml;
+        }
+
+        // --- 5. USER RENDERERS ---
+        function renderUserDashboard() {
+            if(!currentUser) return;
+            document.getElementById('user-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(currentUser.userId)}`;
+            document.getElementById('user-id-display').innerText = currentUser.userId;
+
+            const myScans = appData.scans.filter(s => s.userId === currentUser.userId).sort((a,b) => parseInt(b.timestamp) - parseInt(a.timestamp)).slice(0,10);
+            
+            const historyHtml = myScans.length === 0 ? `<p class="text-slate-500 text-center py-4">No records found.</p>` :
+                myScans.map(scan => {
+                    const isSuccess = scan.status === 'success';
+                    const icon = isSuccess ? (scan.type === 'check-in' ? '<i class="ph-fill ph-check-circle text-emerald-500 text-2xl"></i>' : '<i class="ph-fill ph-clock text-amber-500 text-2xl"></i>') : '<i class="ph-fill ph-x-circle text-red-500 text-2xl"></i>';
+                    return `
+                        <div class="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="flex items-center gap-3">
+                                ${icon}
+                                <div>
+                                    <p class="font-bold text-slate-800 capitalize">${scan.type}</p>
+                                    <p class="text-xs text-slate-500">${new Date(parseInt(scan.timestamp)).toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-bold uppercase ${isSuccess ? 'text-emerald-600' : 'text-red-600'}">${scan.status}</span>
+                                ${scan.message ? `<p class="text-xs text-slate-400 mt-1">${scan.message}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            document.getElementById('user-history-container').innerHTML = historyHtml;
+        }
+
+        // --- 6. SCANNER LOGIC ---
+        function initScanner() {
+            if(html5QrcodeScanner) return;
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, false);
+            html5QrcodeScanner.render(onScanSuccess, () => {});
+        }
+
+        async function onScanSuccess(decodedText) {
+            if (isProcessingScan) return;
+            isProcessingScan = true;
+            if (html5QrcodeScanner) html5QrcodeScanner.pause(true);
+
+            const userId = decodedText.trim();
+            const user = appData.users.find(u => u.userId === userId);
+
+            if (!user) {
+                await processScanResult('error', "Invalid QR: User not found.", null, 'invalid');
+                return;
+            }
+
+            const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+            const userScansToday = appData.scans
+                .filter(s => s.userId === userId && parseInt(s.timestamp) > startOfDay.getTime() && s.status === 'success')
+                .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+
+            const now = Date.now();
+            const lastScan = userScansToday[0];
+
+            if (lastScan && (now - parseInt(lastScan.timestamp)) < 10000) {
+                await processScanResult('error', "Duplicate scan. Please wait.", user, 'invalid');
+                return;
+            }
+
+            const intendedAction = (lastScan && lastScan.type === 'check-in') ? 'check-out' : 'check-in';
+            const resultType = intendedAction === 'check-in' ? 'success' : 'warning';
+            const msg = intendedAction === 'check-in' ? "Check-in successful" : "Check-out successful";
+
+            await processScanResult(resultType, msg, user, intendedAction);
+        }
+
+        async function processScanResult(type, message, user, intendedAction) {
+            playSound(type);
+            showOverlay(type, message, user);
+
+            const now = Date.now();
+            
+            // Save to DB
+            await apiCall('addScan', {
+                scan: {
+                    userId: user ? user.userId : 'unknown',
+                    type: intendedAction,
+                    status: type === 'error' ? 'error' : 'success',
+                    timestamp: now,
+                    message: message
+                }
+            });
+
+            await fetchData(); // Refresh data immediately
+
+            setTimeout(() => {
+                hideOverlay();
+                isProcessingScan = false;
+                if (html5QrcodeScanner) html5QrcodeScanner.resume();
+            }, 3000);
+        }
+
+        function renderScannerLogs() {
+            const logsHtml = [...appData.scans].sort((a,b) => parseInt(b.timestamp) - parseInt(a.timestamp)).slice(0, 15).map(scan => {
+                const u = appData.users.find(x => x.userId === scan.userId);
+                const dotColor = scan.status === 'success' ? (scan.type === 'check-in' ? 'bg-emerald-500' : 'bg-amber-400') : 'bg-red-500';
+                return `<div class="flex justify-between items-center text-sm p-2 rounded-lg bg-white border border-slate-100 shadow-sm">
+                    <div class="flex gap-2 items-center">
+                        <span class="w-2 h-2 rounded-full ${dotColor}"></span>
+                        <span class="font-medium">${u ? u.name : scan.userId}</span>
+                    </div>
+                    <div class="text-slate-500">
+                        <span class="mr-3 capitalize">${scan.type}</span>
+                        ${new Date(parseInt(scan.timestamp)).toLocaleTimeString()}
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('scanner-recent-logs').innerHTML = logsHtml;
+        }
+
+        // --- Overlay & Audio ---
+        function showOverlay(type, message, user) {
+            const overlay = document.getElementById('scan-overlay');
+            const icon = document.getElementById('scan-icon');
+            
+            overlay.className = "absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center zoom-in ";
+            
+            if(type === 'success') {
+                overlay.className += "bg-emerald-500/95";
+                icon.className = "ph-fill ph-check-circle text-white text-8xl mb-4 drop-shadow-md";
+                document.getElementById('scan-message').className = "text-white text-4xl md:text-5xl font-black mb-2 drop-shadow-sm uppercase tracking-wider";
+            } else if(type === 'warning') {
+                overlay.className += "bg-amber-400/95";
+                icon.className = "ph-fill ph-warning-circle text-slate-900 text-8xl mb-4 drop-shadow-md";
+                document.getElementById('scan-message').className = "text-slate-900 text-4xl md:text-5xl font-black mb-2 drop-shadow-sm uppercase tracking-wider";
+            } else {
+                overlay.className += "bg-red-500/95";
+                icon.className = "ph-fill ph-x-circle text-white text-8xl mb-4 drop-shadow-md";
+                document.getElementById('scan-message').className = "text-white text-4xl md:text-5xl font-black mb-2 drop-shadow-sm uppercase tracking-wider";
+            }
+
+            document.getElementById('scan-message').innerText = message;
+
+            if(user) {
+                document.getElementById('scan-user-card').classList.remove('hidden');
+                document.getElementById('scan-user-name').innerText = user.name;
+                document.getElementById('scan-user-id').innerText = user.userId;
+            } else {
+                document.getElementById('scan-user-card').classList.add('hidden');
+            }
+        }
+
+        function hideOverlay() {
+            document.getElementById('scan-overlay').className = "hidden";
+        }
+
+        function playSound(type) {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                
+                if (type === 'success') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+                    osc.start(); osc.stop(ctx.currentTime + 0.5);
+                } else if (type === 'warning') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(600, ctx.currentTime); osc.frequency.setValueAtTime(800, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+                    osc.start(); osc.stop(ctx.currentTime + 0.5);
+                } else {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.3);
+                    osc.start(); osc.stop(ctx.currentTime + 0.3);
+                }
+            } catch (e) { console.error("Audio error", e); }
+        }
+
+        // --- 7. EXPORT/IMPORT ---
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Scan ID,User ID,Name,Date,Time,Status,Result\n";
+            appData.scans.forEach(row => {
+                const user = appData.users.find(u => u.userId === row.userId);
+                const date = new Date(parseInt(row.timestamp));
+                csvContent += `${row.id},${row.userId},${user ? user.name : 'Unknown'},${date.toLocaleDateString()},${date.toLocaleTimeString()},${row.type},${row.status}\n`;
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `attendance_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const rows = event.target.result.split('\n').map(r => r.trim()).filter(r => r);
+                    if (rows.length < 2) return alert("Invalid CSV");
+                    const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
+                    const uIndex = headers.indexOf('username'); const pIndex = headers.indexOf('password');
+                    const idIndex = headers.indexOf('id'); const nIndex = headers.indexOf('name'); const rIndex = headers.indexOf('role');
+                    
+                    if (uIndex === -1 || pIndex === -1 || idIndex === -1 || nIndex === -1) return alert("Need columns: ID, Username, Password, Name.");
+                    
+                    const newUsers = [];
+                    for (let i = 1; i < rows.length; i++) {
+                        const cols = rows[i].split(',').map(c => c.trim());
+                        if(!cols[idIndex]) continue;
+                        newUsers.push({
+                            userId: cols[idIndex], username: cols[uIndex], passwordHash: hashPwd(cols[pIndex]),
+                            name: cols[nIndex], role: cols[rIndex] || 'user', createdAt: Date.now()
+                        });
+                    }
+                    
+                    document.getElementById('action-btn-users').innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> Syncing...';
+                    await apiCall('uploadUsers', { users: newUsers });
+                    alert(`Successfully synced ${newUsers.length} users.`);
+                    await fetchData();
+                } catch (err) { alert("Upload failed: " + err.message); }
+                finally {
+                    document.getElementById('action-btn-users').innerHTML = '<i class="ph ph-upload-simple text-lg"></i> Sync Excel/CSV <input type="file" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Boot
+        window.onload = init;
+    </script>
+</body>
+</html>
