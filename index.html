@@ -461,8 +461,11 @@
             isProcessingScan = true;
             if (html5QrcodeScanner) html5QrcodeScanner.pause(true);
 
-            const userId = decodedText.trim();
-            const user = appData.users.find(u => u.userId === userId);
+            let userId = decodedText.trim();
+            try {
+                const parsed = new URL(userId);
+                userId = parsed.searchParams.get('id') || userId;
+            } catch(_) {} // not a URL → use the raw string as before
 
             if (!user) {
                 await processScanResult('error', "Invalid QR: User not found.", null, 'invalid');
