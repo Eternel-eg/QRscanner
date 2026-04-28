@@ -204,7 +204,7 @@ const DECODE=d=>{if(!d?.startsWith('ATTENDQR:'))return null;const p=d.split(':')
 ══════════════════════════════════════════════════════════════ */
 const GS={
   async call(action,params={}){
-    if(!GS_CONFIG.ENABLED||!GS_CONFIG.URL||GS_CONFIG.URL.includes('YOUR_GOOGLE')){
+    if(!GS_CONFIG.ENABLED||!GS_CONFIG.URL||GS_CONFIG.URL.includes('https://script.google.com/macros/s/AKfycbzawUAM1y7YpN9utnzuKvtNgldduU9k38b_eIARCzCDrGhVqEbuRL9rEJdWNIq7Q-LLfA/exec')){
       console.warn('[GS] Not configured – running in local mode');return null;
     }
     try{
