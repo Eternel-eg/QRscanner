@@ -1,309 +1,1378 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SyncScan - Modern Attendance System</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <!-- HTML5 QR Code Scanner -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>AttendQR — Smart Attendance System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#04080f;--s1:#080f1c;--s2:#0c1526;--s3:#111d32;
+  --brd:rgba(255,255,255,.07);--brd2:rgba(255,255,255,.13);
+  --t1:#e9eef7;--t2:#6d82a0;--t3:#304060;
+  --blue:#3b82f6;--blue2:#1d4ed8;
+  --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#8b5cf6;--cyan:#06b6d4;
+  --r:14px;--r2:10px;--r3:8px;
+}
+html,body{height:100%;overflow-x:hidden;font-family:'Inter',system-ui,sans-serif}
+body{background:var(--bg);color:var(--t1);font-size:14px;line-height:1.55}
+button,input,select,textarea{font-family:inherit}
+input,select{color-scheme:dark}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--t3);border-radius:4px}
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-                    animation: {
-                        'pop-in': 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-                        'slide-up': 'slideUp 0.3s ease-out forwards',
-                        'fade-in': 'fadeIn 0.2s ease-out forwards',
-                    },
-                    keyframes: {
-                        popIn: {
-                            '0%': { transform: 'scale(0.8)', opacity: '0' },
-                            '100%': { transform: 'scale(1)', opacity: '1' },
-                        },
-                        slideUp: {
-                            '0%': { transform: 'translateY(20px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+/* ── ANIMATIONS ── */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.18)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes scanLine{0%{top:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{top:100%;opacity:0}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+@keyframes bounceIn{0%{transform:scale(0)rotate(-20deg)}60%{transform:scale(1.18)rotate(4deg)}100%{transform:scale(1)rotate(0)}}
+@keyframes drain{from{width:100%}to{width:0}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes glow{0%,100%{box-shadow:0 0 12px rgba(59,130,246,.25)}50%{box-shadow:0 0 28px rgba(59,130,246,.55)}}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body { -webkit-tap-highlight-color: transparent; }
-        .view-section { display: none; }
-        .view-section.active { display: block; animation: fadeIn 0.3s ease-out; }
-        #reader { border: none !important; background: transparent; }
-        #reader__dashboard_section_swaplink { color: #6366f1 !important; text-decoration: none; font-weight: 600; }
-        #reader button { background: #4f46e5 !important; color: white !important; border: none !important; border-radius: 0.75rem !important; padding: 0.6rem 1.2rem !important; font-weight: 600 !important; cursor: pointer; }
-        #toast-container { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; width: 90%; max-width: 400px; pointer-events: none; }
-        .toast { pointer-events: auto; padding: 1rem 1.25rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); display: flex; align-items: center; gap: 0.75rem; font-weight: 500; animation: slideUp 0.3s ease-out forwards; }
-        .toast.success { background: #10b981; color: white; }
-        .toast.error { background: #ef4444; color: white; }
-    </style>
-</head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+/* ── BUTTONS ── */
+.btn{border:none;border-radius:var(--r2);padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:all .18s;letter-spacing:-.1px;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,0);transition:.2s}
+.btn:hover::after{background:rgba(255,255,255,.06)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;box-shadow:0 4px 18px rgba(29,78,216,.35)}
+.btn-primary:hover{box-shadow:0 6px 24px rgba(29,78,216,.5);transform:translateY(-1px)}
+.btn-success{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.btn-danger{background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);color:#f87171}
+.btn-ghost{background:rgba(255,255,255,.05);border:1px solid var(--brd);color:var(--t2)}
+.btn-ghost:hover{border-color:var(--brd2);color:var(--t1)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:var(--r3)}
+.btn-lg{padding:14px 24px;font-size:15px;border-radius:var(--r)}
+.btn-xl{padding:16px 28px;font-size:16px;border-radius:var(--r)}
 
-    <div id="toast-container"></div>
+/* ── CARDS ── */
+.card{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:1.25rem}
+.card-sm{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r2);padding:.9rem}
+.card-glass{background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:var(--r);padding:1.25rem;backdrop-filter:blur(10px)}
 
-    <!-- INITIALIZING OVERLAY -->
-    <div id="loading-view" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center">
-        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-slate-500 font-semibold animate-pulse">Initializing System...</p>
+/* ── FORMS ── */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:10px;font-weight:800;color:var(--t2);letter-spacing:.9px;text-transform:uppercase}
+.field input,.field select,.field textarea{background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:var(--r3);padding:10px 13px;color:var(--t1);font-size:13.5px;transition:.18s;width:100%}
+.field input:focus,.field select:focus{border-color:rgba(59,130,246,.6);background:rgba(59,130,246,.06);outline:none}
+.input-raw{background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:var(--r3);padding:8px 12px;color:var(--t1);font-size:13px;transition:.18s}
+.input-raw:focus{border-color:rgba(59,130,246,.5);outline:none}
+
+/* ── TABLE ── */
+.tbl-wrap{border-radius:var(--r);border:1px solid var(--brd);overflow:hidden}
+.tbl-wrap table{width:100%;border-collapse:collapse;min-width:500px}
+.tbl-wrap th{background:rgba(255,255,255,.03);padding:9px 14px;text-align:left;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.1px;color:var(--t3);border-bottom:1px solid var(--brd);white-space:nowrap}
+.tbl-wrap td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.025);font-size:13px;color:var(--t2)}
+.tbl-wrap tr:last-child td{border-bottom:none}
+.tbl-wrap tr:hover td{background:rgba(255,255,255,.02)}
+
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:9.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+
+/* ── STATUS DOT ── */
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-green{background:var(--green)}
+.dot-amber{background:var(--amber)}
+.dot-red{background:var(--red)}
+.dot-gray{background:var(--t3)}
+.dot-pulse{animation:pulse 1.8s ease-in-out infinite}
+
+/* ── NAV ── */
+.topbar{position:sticky;top:0;z-index:100;height:58px;display:flex;align-items:center;gap:10px;padding:0 1.1rem;background:rgba(4,8,15,.93);border-bottom:1px solid var(--brd);backdrop-filter:blur(18px)}
+.topbar-logo{width:34px;height:34px;background:linear-gradient(135deg,#1d4ed8,#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.nav-pill{display:flex;gap:2px;flex:1;justify-content:center;overflow-x:auto}
+.nav-pill::-webkit-scrollbar{display:none}
+.nav-item{background:transparent;border:none;padding:7px 12px;border-radius:8px;display:flex;align-items:center;gap:6px;color:var(--t2);font-size:12.5px;font-weight:500;cursor:pointer;transition:.15s;white-space:nowrap}
+.nav-item:hover{background:rgba(255,255,255,.05);color:var(--t1)}
+.nav-item.active{background:rgba(59,130,246,.14);color:#93c5fd;font-weight:700}
+
+/* ── SIDEBAR ── */
+.sidebar{width:210px;background:var(--s1);border-right:1px solid var(--brd);flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto}
+.sb-section{padding:10px 12px 4px;font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--t3)}
+.sb-btn{width:100%;background:transparent;border:none;border-left:3px solid transparent;padding:9px 13px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:9px;color:var(--t2);font-size:12.5px;font-weight:500;transition:.14s}
+.sb-btn:hover{background:rgba(255,255,255,.04);color:var(--t1)}
+.sb-btn.active{background:rgba(59,130,246,.1);border-left-color:var(--blue);color:#93c5fd;font-weight:700}
+.sb-ic{font-size:14px}
+
+/* ── SCANNER ── */
+.cam-box{position:relative;background:#000;aspect-ratio:4/3;overflow:hidden;max-height:400px;display:flex;align-items:center;justify-content:center}
+.cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.scan-frame{position:relative;width:230px;height:230px}
+.sf-corner{position:absolute;width:34px;height:34px}
+.sf-tl{top:0;left:0;border-top:3px solid var(--blue);border-left:3px solid var(--blue);border-radius:5px 0 0 0}
+.sf-tr{top:0;right:0;border-top:3px solid var(--blue);border-right:3px solid var(--blue);border-radius:0 5px 0 0}
+.sf-bl{bottom:0;left:0;border-bottom:3px solid var(--blue);border-left:3px solid var(--blue);border-radius:0 0 0 5px}
+.sf-br{bottom:0;right:0;border-bottom:3px solid var(--blue);border-right:3px solid var(--blue);border-radius:0 0 5px 0}
+.scan-beam{position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,rgba(59,130,246,.95),transparent);animation:scanLine 2.4s ease-in-out infinite;box-shadow:0 0 14px rgba(59,130,246,.8)}
+
+/* ── MISC ── */
+.spin{animation:spin .65s linear infinite}
+.empty{text-align:center;padding:3rem 1rem;color:var(--t3)}
+.empty-ic{font-size:54px;opacity:.28;display:block;margin-bottom:.8rem}
+.lbl{font-size:9.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anim-up{animation:slideUp .28s cubic-bezier(.34,1.2,.64,1) forwards}
+.anim-in{animation:scaleIn .3s cubic-bezier(.34,1.3,.64,1) forwards}
+.anim-fade{animation:fadeIn .25s ease forwards}
+.divider{height:1px;background:var(--brd);margin:.9rem 0}
+.grid-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.grid-users{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.grid-qr{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:14px}
+.flex{display:flex;align-items:center}
+.between{display:flex;align-items:center;justify-content:space-between}
+.gap-1{gap:6px}
+.gap-2{gap:10px}
+.gap-3{gap:14px}
+.mb-1{margin-bottom:8px}
+.mb-2{margin-bottom:14px}
+.mb-3{margin-bottom:22px}
+.w-full{width:100%}
+.font-mono{font-family:'Courier New',monospace}
+.text-green{color:var(--green)}
+.text-amber{color:var(--amber)}
+.text-red{color:var(--red)}
+.text-blue{color:var(--blue)}
+.text-purple{color:var(--purple)}
+.text-muted{color:var(--t2)}
+.text-dim{color:var(--t3)}
+.fw-black{font-weight:900}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:9.5px;font-weight:700;background:rgba(255,255,255,.06);color:var(--t2)}
+
+/* ── MOBILE NAV ── */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:99;background:var(--s1);border-top:1px solid var(--brd);padding:6px 0 env(safe-area-inset-bottom,0)}
+@media(max-width:700px){
+  .topbar-nav-desktop{display:none!important}
+  .mob-nav{display:flex}
+  .sidebar{display:none}
+}
+
+/* ── TICKER ── */
+.ticker-wrap{overflow:hidden;background:rgba(59,130,246,.06);border-bottom:1px solid rgba(59,130,246,.12);padding:6px 0;height:32px}
+.ticker-inner{display:inline-flex;gap:0;animation:ticker 30s linear infinite;white-space:nowrap}
+.ticker-item{padding:0 2.5rem;font-size:11px;font-weight:600;color:#60a5fa}
+.ticker-dot{color:var(--t3)}
+</style>
+
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
+
+/* ══════════════════════════════════════════════════════════════
+   ⚙️  GOOGLE SHEETS CONFIG  — paste your Web App URL below
+══════════════════════════════════════════════════════════════ */
+const GS_CONFIG={
+  URL:'https://script.google.com/macros/s/AKfycbzawUAM1y7YpN9utnzuKvtNgldduU9k38b_eIARCzCDrGhVqEbuRL9rEJdWNIq7Q-LLfA/exec',  // ← Replace this
+  ENABLED:true   // ← Set to true after you paste your URL
+};
+
+/* ══════════════════════════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════════════════════════ */
+const SALT='ATTENDQR_SECURE_SALT_2024_V2';
+const COOLDOWN=3500;
+const OVERLAY_MS=4300;
+const ROLE_C={admin:'#ef4444',manager:'#f59e0b',staff:'#3b82f6',hr:'#06b6d4',scanner:'#8b5cf6'};
+const ROLE_BG={admin:'rgba(239,68,68,.12)',manager:'rgba(245,158,11,.12)',staff:'rgba(59,130,246,.12)',hr:'rgba(6,182,212,.12)',scanner:'rgba(139,92,246,.12)'};
+const TODAY=()=>new Date().toISOString().split('T')[0];
+const FT=ts=>new Date(ts).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+const FD=ts=>new Date(ts).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+const FS=ts=>new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const AGO=ts=>Math.round((Date.now()-ts)/60000);
+const DUR=ms=>{const m=Math.floor(ms/60000),h=Math.floor(m/60);return h>0?`${h}h ${m%60}m`:`${m}m`;};
+const INITIALS=n=>(n||'?').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'??';
+const ENCODE=id=>`ATTENDQR:${id}:${btoa(id+SALT)}`;
+const DECODE=d=>{if(!d?.startsWith('ATTENDQR:'))return null;const p=d.split(':');try{return p[2]===btoa(p[1]+SALT)?p[1]:null;}catch{return null;}};
+
+/* ══════════════════════════════════════════════════════════════
+   GOOGLE SHEETS API
+══════════════════════════════════════════════════════════════ */
+const GS={
+  async call(action,params={}){
+    if(!GS_CONFIG.ENABLED||!GS_CONFIG.URL||GS_CONFIG.URL.includes('YOUR_GOOGLE')){
+      console.warn('[GS] Not configured – running in local mode');return null;
+    }
+    try{
+      const url=new URL(GS_CONFIG.URL);
+      url.searchParams.set('action',action);
+      Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,String(v??'')));
+      const r=await fetch(url.toString());
+      const d=await r.json();
+      return d.success?d.data:null;
+    }catch(e){console.error('[GS]',action,e);return null;}
+  },
+  getUsers:()=>GS.call('getUsers'),
+  addUser:u=>GS.call('addUser',{userid:u.id,username:u.username,password:u.password,name:u.name,department:u.dept,role:u.role,email:u.email,phone:u.phone,joindate:u.joined,active:'TRUE'}),
+  updateUser:u=>GS.call('updateUser',{userid:u.id,name:u.name,department:u.dept,role:u.role,email:u.email,phone:u.phone,active:u.active?'TRUE':'FALSE'}),
+  deleteUser:id=>GS.call('deleteUser',{userId:id}),
+  authenticate:(un,pw)=>GS.call('authenticate',{username:un,password:pw}),
+  getLogs:d=>GS.call('getLogs',{date:d||''}),
+  addLog:l=>GS.call('addLog',{logid:l.id,userid:l.userId,name:l.name,department:l.dept,role:l.role,status:l.status,timestamp:l.time,date:l.date,scannedby:l.scanner,duration:l.duration||'',type:l.type}),
+  test:()=>GS.call('testConnection'),
+};
+
+/* ══════════════════════════════════════════════════════════════
+   AUDIO
+══════════════════════════════════════════════════════════════ */
+function playTone(type){
+  try{
+    const ac=new(window.AudioContext||window.webkitAudioContext)();
+    const g=ac.createGain();g.gain.setValueAtTime(.16,ac.currentTime);g.connect(ac.destination);
+    const tone=(f,t,d,wave='sine')=>{const o=ac.createOscillator(),gn=ac.createGain();o.type=wave;o.frequency.setValueAtTime(f,ac.currentTime+t);gn.gain.setValueAtTime(.14,ac.currentTime+t);gn.gain.exponentialRampToValueAtTime(.001,ac.currentTime+t+d);o.connect(gn);gn.connect(ac.destination);o.start(ac.currentTime+t);o.stop(ac.currentTime+t+d+.05);};
+    if(type==='success'){tone(523,0,.18);tone(659,.11,.18);tone(784,.24,.32);}
+    else if(type==='warning'){tone(440,0,.22,'square');tone(370,.18,.28,'square');}
+    else{tone(233,0,.14,'sawtooth');tone(196,.11,.14,'sawtooth');tone(174,.24,.28,'sawtooth');}
+  }catch(e){}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SEED DATA
+══════════════════════════════════════════════════════════════ */
+const SEED_USERS=[
+  {id:'U001',username:'admin',password:'Admin@123',name:'Alex Morgan',role:'admin',dept:'IT',email:'admin@company.com',phone:'+1-555-0001',joined:'2022-01-15',active:true},
+  {id:'U002',username:'john.doe',password:'Pass@123',name:'John Doe',role:'staff',dept:'Engineering',email:'john@company.com',phone:'+1-555-0002',joined:'2022-03-20',active:true},
+  {id:'U003',username:'jane.smith',password:'Pass@123',name:'Jane Smith',role:'staff',dept:'Marketing',email:'jane@company.com',phone:'+1-555-0003',joined:'2022-05-10',active:true},
+  {id:'U004',username:'bob.wilson',password:'Pass@123',name:'Bob Wilson',role:'staff',dept:'Finance',email:'bob@company.com',phone:'+1-555-0004',joined:'2023-01-08',active:true},
+  {id:'U005',username:'sara.lee',password:'Pass@123',name:'Sara Lee',role:'hr',dept:'Human Resources',email:'sara@company.com',phone:'+1-555-0005',joined:'2023-06-15',active:true},
+  {id:'U006',username:'mike.chen',password:'Pass@123',name:'Mike Chen',role:'manager',dept:'Engineering',email:'mike@company.com',phone:'+1-555-0006',joined:'2021-11-30',active:true},
+  {id:'U007',username:'emma.davis',password:'Pass@123',name:'Emma Davis',role:'staff',dept:'Design',email:'emma@company.com',phone:'+1-555-0007',joined:'2023-09-01',active:true},
+  {id:'SCAN1',username:'scanner01',password:'Scan@123',name:'Main Gate Terminal',role:'scanner',dept:'Security',email:'gate@company.com',phone:'+1-555-0099',joined:'2022-01-01',active:true},
+];
+const SEED_LOGS=()=>{
+  const td=TODAY(),now=Date.now();
+  return[
+    {id:'L001',userId:'U002',name:'John Doe',dept:'Engineering',role:'staff',status:'check-in',time:now-7*36e5,date:td,scanner:'Main Gate',type:'success'},
+    {id:'L002',userId:'U003',name:'Jane Smith',dept:'Marketing',role:'staff',status:'check-in',time:now-6.5*36e5,date:td,scanner:'Main Gate',type:'success'},
+    {id:'L003',userId:'U006',name:'Mike Chen',dept:'Engineering',role:'manager',status:'check-in',time:now-6*36e5,date:td,scanner:'Main Gate',type:'success'},
+    {id:'L004',userId:'U004',name:'Bob Wilson',dept:'Finance',role:'staff',status:'check-in',time:now-5.5*36e5,date:td,scanner:'Main Gate',type:'success'},
+    {id:'L005',userId:'U005',name:'Sara Lee',dept:'Human Resources',role:'hr',status:'check-in',time:now-5*36e5,date:td,scanner:'Main Gate',type:'success'},
+    {id:'L006',userId:'U007',name:'Emma Davis',dept:'Design',role:'staff',status:'check-in',time:now-4*36e5,date:td,scanner:'Main Gate',type:'success'},
+    {id:'L007',userId:'U004',name:'Bob Wilson',dept:'Finance',role:'staff',status:'check-out',time:now-1.5*36e5,date:td,scanner:'Main Gate',type:'warning',duration:4*36e5},
+  ];
+};
+
+/* ══════════════════════════════════════════════════════════════
+   SMALL COMPONENTS
+══════════════════════════════════════════════════════════════ */
+const Spinner=({size=15,c='#fff'})=>(
+  <span style={{width:size,height:size,border:`2.5px solid rgba(255,255,255,.2)`,borderTopColor:c,borderRadius:'50%',display:'inline-block'}} className="spin"/>
+);
+
+const Avatar=({user,size=40})=>{
+  const c=ROLE_C[user?.role]||'#64748b';
+  const r=size>42?'13px':size>28?'9px':'7px';
+  return(
+    <div style={{width:size,height:size,borderRadius:r,background:`${c}18`,border:`1.5px solid ${c}35`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.31,fontWeight:900,color:c,flexShrink:0}}>
+      {INITIALS(user?.name)}
     </div>
+  );
+};
 
-    <!-- MAIN HEADER -->
-    <header id="main-header" class="hidden bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div class="flex items-center gap-2 text-indigo-600 font-bold text-xl">
-            <div class="bg-indigo-600 text-white p-1.5 rounded-lg"><i class="ph ph-qr-code text-xl"></i></div>
-            <span>SyncScan</span>
+const QRBox=({value,size=180})=>{
+  const ref=useRef();
+  useEffect(()=>{
+    if(!ref.current||!window.QRCode)return;
+    ref.current.innerHTML='';
+    try{new window.QRCode(ref.current,{text:value||'EMPTY',width:size,height:size,colorDark:'#04080f',colorLight:'#ffffff',correctLevel:window.QRCode.CorrectLevel.H});}catch(e){}
+  },[value,size]);
+  return <div ref={ref} style={{display:'inline-block',lineHeight:0,borderRadius:'6px',overflow:'hidden'}}/>;
+};
+
+const Badge=({label,role})=>{
+  const c=ROLE_C[role||label]||'#64748b';
+  const bg=ROLE_BG[role||label]||'rgba(100,116,139,.12)';
+  return <span className="badge" style={{background:bg,color:c,border:`1px solid ${c}20`}}>{label||role}</span>;
+};
+
+const Toast=({msg,type,onClose})=>{
+  useEffect(()=>{const t=setTimeout(onClose,3200);return()=>clearTimeout(t);},[]);
+  const cfg={success:{bg:'rgba(22,163,74,.1)',brd:'rgba(34,197,94,.25)',c:'#4ade80',ic:'✅'},error:{bg:'rgba(239,68,68,.1)',brd:'rgba(239,68,68,.25)',c:'#f87171',ic:'❌'},info:{bg:'rgba(59,130,246,.1)',brd:'rgba(59,130,246,.25)',c:'#60a5fa',ic:'ℹ️'}};
+  const s=cfg[type]||cfg.info;
+  return(
+    <div style={{position:'fixed',bottom:'76px',left:'50%',transform:'translateX(-50%)',zIndex:9000,maxWidth:'340px',width:'92%',background:s.bg,border:`1px solid ${s.brd}`,borderRadius:'12px',padding:'11px 15px',animation:'slideUp .3s ease',boxShadow:'0 8px 32px rgba(0,0,0,.45)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
+        <span style={{fontSize:'15px'}}>{s.ic}</span>
+        <span style={{color:s.c,fontSize:'13px',fontWeight:600,flex:1}}>{msg}</span>
+        <button onClick={onClose} style={{background:'none',border:'none',color:s.c,fontSize:'17px',cursor:'pointer',opacity:.6,lineHeight:1}}>×</button>
+      </div>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   SCAN RESULT OVERLAY
+══════════════════════════════════════════════════════════════ */
+const ScanOverlay=({result,onClose})=>{
+  useEffect(()=>{if(!result)return;const t=setTimeout(onClose,OVERLAY_MS);return()=>clearTimeout(t);},[result]);
+  if(!result)return null;
+  const CFG={
+    success:{bg:'#010f06',brd:'#16a34a',txt:'#4ade80',dark:'#052e16',icon:'✓',title:'CHECK-IN SUCCESSFUL',ibg:'linear-gradient(135deg,#15803d,#22c55e)'},
+    warning:{bg:'#100800',brd:'#d97706',txt:'#fbbf24',dark:'#451a03',icon:'◐',title:'CHECK-OUT SUCCESSFUL',ibg:'linear-gradient(135deg,#b45309,#f59e0b)'},
+    error:  {bg:'#0f0202',brd:'#dc2626',txt:'#f87171',dark:'#450a0a',icon:'✕',title:'INVALID SCAN',ibg:'linear-gradient(135deg,#b91c1c,#ef4444)'},
+  };
+  const s=CFG[result.type]||CFG.error;
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.93)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:'1rem',backdropFilter:'blur(8px)',animation:'fadeIn .3s'}}>
+      <div className="anim-in" style={{background:s.bg,border:`1.5px solid ${s.brd}`,borderRadius:'26px',padding:'2.5rem 1.8rem',maxWidth:'370px',width:'100%',textAlign:'center',boxShadow:`0 0 80px ${s.brd}28,0 32px 64px rgba(0,0,0,.65)`}}>
+        <div style={{width:'90px',height:'90px',background:s.ibg,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'46px',color:'#fff',fontWeight:900,margin:'0 auto 1.4rem',boxShadow:`0 8px 32px ${s.brd}55`,animation:'bounceIn .5s cubic-bezier(.34,1.4,.64,1)'}}>
+          {s.icon}
         </div>
-        <div class="flex items-center gap-4">
-            <div class="text-right hidden sm:block">
-                <p id="nav-username" class="text-sm font-bold leading-none">User</p>
-                <p id="nav-role" class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-1">Role</p>
+        <div style={{fontSize:'10px',fontWeight:800,letterSpacing:'3px',color:s.txt,marginBottom:'8px'}}>{s.title}</div>
+        {result.user&&(
+          <>
+            <div style={{fontSize:'25px',fontWeight:900,color:'#f8fafc',letterSpacing:'-.8px',marginBottom:'3px'}}>{result.user.name}</div>
+            <div style={{fontSize:'12px',color:'#475569',marginBottom:'5px'}}>{result.user.id} · {result.user.dept}</div>
+            <Badge role={result.user.role} label={result.user.role}/>
+            <div style={{height:'12px'}}/>
+          </>
+        )}
+        <div style={{background:`${s.brd}18`,border:`1px solid ${s.dark}`,borderRadius:'12px',padding:'11px 14px',color:s.txt,fontSize:'13.5px',lineHeight:1.6,marginBottom:'10px'}}>{result.message}</div>
+        {result.duration&&<div style={{background:`${s.brd}10`,borderRadius:'9px',padding:'7px 12px',marginBottom:'10px',color:s.txt,fontSize:'12.5px'}}>⏱ Duration: <strong>{DUR(result.duration)}</strong></div>}
+        <div style={{fontSize:'12px',color:'#1e293b',marginBottom:'7px'}}>{FT(Date.now())}</div>
+        <div style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(34,197,94,.1)',border:'1px solid rgba(34,197,94,.2)',borderRadius:'20px',padding:'4px 11px',marginBottom:'14px'}}>
+          <span style={{fontSize:'12px'}}>📄</span><span style={{color:'#4ade80',fontSize:'11px',fontWeight:700}}>{GS_CONFIG.ENABLED?'Synced to Google Sheets':'Saved Locally'}</span>
+        </div>
+        <div style={{height:'3px',background:'rgba(255,255,255,.07)',borderRadius:'2px',overflow:'hidden'}}>
+          <div style={{height:'100%',background:s.brd,animation:`drain ${OVERLAY_MS}ms linear forwards`}}/>
+        </div>
+        <div style={{fontSize:'10px',color:'#0f1e30',marginTop:'8px'}}>Tap anywhere to dismiss</div>
+      </div>
+    </div>
+  );
+};
+/* ══════════════════════════════════════════════════════════════
+   LOGIN PAGE
+══════════════════════════════════════════════════════════════ */
+const LoginPage=({users,onLogin})=>{
+  const[un,setUn]=useState('');const[pw,setPw]=useState('');
+  const[err,setErr]=useState('');const[loading,setLoading]=useState(false);
+  const[show,setShow]=useState(false);const[tries,setTries]=useState(0);
+
+  const submit=async e=>{
+    e.preventDefault();setErr('');
+    if(tries>=5){setErr('Account locked after 5 failed attempts. Contact admin.');return;}
+    setLoading(true);
+    await new Promise(r=>setTimeout(r,650));
+    // Try Google Sheets first, fall back to local
+    let user=null;
+    const gsUser=await GS.authenticate(un,pw);
+    if(gsUser){
+      user={id:gsUser.userid,username:gsUser.username,password:gsUser.password,name:gsUser.name,dept:gsUser.department||gsUser.dept,role:gsUser.role,email:gsUser.email,phone:gsUser.phone,joined:gsUser.joindate||gsUser.joined,active:true};
+    } else {
+      user=users.find(u=>u.username===un&&u.password===pw&&u.active!==false);
+    }
+    if(user){onLogin(user);}
+    else{setTries(t=>t+1);setErr(`Invalid credentials. ${5-(tries+1)} attempts left.`);setLoading(false);}
+  };
+
+  const QUICK=[['admin','Admin@123','🔴 Admin'],['john.doe','Pass@123','🔵 Staff'],['scanner01','Scan@123','🟣 Scanner'],['mike.chen','Pass@123','🟡 Manager']];
+
+  return(
+    <div style={{minHeight:'100vh',background:'radial-gradient(ellipse at 32% 22%,rgba(15,35,80,.85) 0%,var(--bg) 62%)',display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem',position:'relative',overflow:'hidden'}}>
+      {[{t:'6%',l:'3%',s:'380px',c:'rgba(37,99,235,.05)'},{b:'8%',r:'4%',s:'280px',c:'rgba(124,58,237,.04)'},{t:'55%',l:'18%',s:'200px',c:'rgba(6,182,212,.03)'}].map((d,i)=>(
+        <div key={i} style={{position:'absolute',top:d.t,bottom:d.b,left:d.l,right:d.r,width:d.s,height:d.s,background:d.c,borderRadius:'50%',filter:'blur(60px)',pointerEvents:'none'}}/>
+      ))}
+      <div style={{width:'100%',maxWidth:'430px',position:'relative',zIndex:1,animation:'slideUp .4s ease'}}>
+        {/* Brand */}
+        <div style={{textAlign:'center',marginBottom:'1.8rem'}}>
+          <div style={{width:'72px',height:'72px',background:'linear-gradient(135deg,rgba(29,78,216,.3),rgba(124,58,237,.22))',border:'1px solid rgba(59,130,246,.3)',borderRadius:'20px',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 1rem',fontSize:'30px',animation:'float 4s ease-in-out infinite',boxShadow:'0 0 40px rgba(37,99,235,.16)'}}>📊</div>
+          <h1 style={{fontSize:'30px',fontWeight:900,letterSpacing:'-1.5px'}}>Attend<span style={{color:'var(--blue)'}}>QR</span></h1>
+          <p style={{color:'var(--t2)',fontSize:'13px',marginTop:'4px'}}>Smart Attendance Management System</p>
+        </div>
+
+        {/* Card */}
+        <div className="card" style={{boxShadow:'0 24px 80px rgba(0,0,0,.55)'}}>
+          <h2 style={{fontSize:'18px',fontWeight:800,marginBottom:'1.4rem',letterSpacing:'-.3px'}}>Sign in to your account</h2>
+
+          {err&&<div style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',borderRadius:'9px',padding:'10px 13px',marginBottom:'1rem',color:'#fca5a5',fontSize:'13px',display:'flex',gap:'7px',alignItems:'flex-start',animation:'shake .3s ease'}}>
+            <span>⚠️</span><span>{err}</span>
+          </div>}
+
+          {GS_CONFIG.ENABLED&&<div style={{background:'rgba(34,197,94,.07)',border:'1px solid rgba(34,197,94,.15)',borderRadius:'8px',padding:'8px 12px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:'7px'}}>
+            <span className="dot dot-green dot-pulse"/>
+            <span style={{fontSize:'11px',color:'#4ade80',fontWeight:600}}>Connected to Google Sheets</span>
+          </div>}
+
+          <form onSubmit={submit}>
+            <div className="field mb-2">
+              <label>Username</label>
+              <input type="text" value={un} onChange={e=>setUn(e.target.value)} placeholder="your.username" required autoComplete="username"/>
             </div>
-            <button onclick="logout()" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                <i class="ph ph-sign-out text-2xl"></i>
+            <div className="field" style={{marginBottom:'1.4rem'}}>
+              <label>Password</label>
+              <div style={{position:'relative'}}>
+                <input type={show?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" required autoComplete="current-password" style={{paddingRight:'42px'}}/>
+                <button type="button" onClick={()=>setShow(!show)} style={{position:'absolute',right:'11px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--t2)',fontSize:'17px',lineHeight:1}}>{show?'🙈':'👁️'}</button>
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary btn-xl w-full" disabled={loading}>
+              {loading?<><Spinner/>Authenticating...</>:'Sign In →'}
             </button>
-        </div>
-    </header>
+          </form>
 
-    <main class="flex-1 p-4 max-w-lg mx-auto w-full">
-        <!-- LOGIN VIEW -->
-        <section id="login-view" class="view-section pt-12">
-            <div class="text-center mb-10">
-                <h1 class="text-3xl font-black text-slate-900 mb-2">Welcome Back</h1>
-                <p class="text-slate-500">Sign in to start scanning</p>
+          {/* Quick demo */}
+          <div style={{marginTop:'1.4rem',padding:'13px',background:'rgba(255,255,255,.025)',borderRadius:'11px',border:'1px solid var(--brd)'}}>
+            <p className="lbl" style={{marginBottom:'8px'}}>Quick Demo Login</p>
+            <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+              {QUICK.map(([u,p,l])=>(
+                <button key={u} onClick={()=>{setUn(u);setPw(p);}} className="btn btn-ghost btn-sm" style={{fontSize:'11.5px'}}>{l}</button>
+              ))}
             </div>
-            <form onsubmit="handleLogin(event)" class="space-y-4">
-                <input type="text" id="login-user" placeholder="Username" required class="w-full p-4 rounded-2xl bg-white border border-slate-200 focus:border-indigo-500 outline-none transition-all">
-                <input type="password" id="login-pass" placeholder="Password" required class="w-full p-4 rounded-2xl bg-white border border-slate-200 focus:border-indigo-500 outline-none transition-all">
-                <button type="submit" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 active:scale-95 transition-all">Sign In</button>
+          </div>
+        </div>
+        <p style={{textAlign:'center',color:'var(--t3)',fontSize:'11.5px',marginTop:'1rem'}}>🔒 Session-based · QR-encrypted · Role-restricted</p>
+      </div>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   SCANNER PAGE
+══════════════════════════════════════════════════════════════ */
+const ScannerPage=({users,logs,onScan,me})=>{
+  const videoRef=useRef();const canvasRef=useRef();
+  const streamRef=useRef();const rafRef=useRef();const coolRef=useRef({});
+  const[active,setActive]=useState(false);
+  const[overlay,setOverlay]=useState(null);
+  const[recent,setRecent]=useState([]);
+  const[manId,setManId]=useState('');
+  const[camErr,setCamErr]=useState('');
+  const[stats,setStats]=useState({total:0,ins:0,outs:0,errors:0});
+
+  const processId=useCallback(uid=>{
+    const user=users.find(u=>u.id===uid);
+    if(!user){const r={type:'error',message:'QR not recognised — user not found.'};setOverlay(r);playTone('error');onScan(null);setStats(s=>({...s,total:s.total+1,errors:s.errors+1}));return;}
+    if(user.active===false){setOverlay({type:'error',message:'Account deactivated. Contact admin.',user});playTone('error');return;}
+    const now=Date.now();
+    if(coolRef.current[uid]&&now-coolRef.current[uid]<COOLDOWN)return;
+    coolRef.current[uid]=now;
+    const td=TODAY();
+    const ul=logs.filter(l=>l.userId===uid&&l.date===td);
+    const last=ul[ul.length-1];
+    let type,status,msg,duration;
+    if(!last||last.status==='check-out'){type='success';status='check-in';msg=`Welcome, ${user.name.split(' ')[0]}! Check-in at ${FT(now)}.`;}
+    else if(last.status==='check-in'){type='warning';status='check-out';duration=now-last.time;msg=`Goodbye! Session: ${DUR(duration)}.`;}
+    else{type='error';msg='Invalid scan sequence — expected check-in → check-out.';setOverlay({type,message:msg});playTone('error');return;}
+    const entry={id:`L${Date.now()}${Math.random().toString(36).slice(2,5)}`,userId:uid,name:user.name,dept:user.dept,role:user.role,status,time:now,date:td,scanner:me?.name||'Scanner Terminal',type,duration};
+    playTone(type);setOverlay({type,user,message:msg,duration});
+    setRecent(p=>[entry,...p].slice(0,10));
+    setStats(s=>({total:s.total+1,ins:s.ins+(status==='check-in'?1:0),outs:s.outs+(status==='check-out'?1:0),errors:s.errors}));
+    onScan(entry);
+  },[users,logs,me,onScan]);
+
+  const stopCam=useCallback(()=>{
+    if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}
+    if(rafRef.current)cancelAnimationFrame(rafRef.current);
+    setActive(false);setCamErr('');
+  },[]);
+
+  const startCam=useCallback(async()=>{
+    setCamErr('');
+    try{
+      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}});
+      streamRef.current=s;videoRef.current.srcObject=s;await videoRef.current.play();setActive(true);
+      const tick=()=>{
+        const v=videoRef.current,c=canvasRef.current;
+        if(!v||!c||!streamRef.current)return;
+        if(v.readyState===v.HAVE_ENOUGH_DATA){
+          c.width=v.videoWidth;c.height=v.videoHeight;
+          const ctx=c.getContext('2d');ctx.drawImage(v,0,0);
+          const img=ctx.getImageData(0,0,c.width,c.height);
+          const code=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+          if(code){const id=DECODE(code.data);if(id)processId(id);}
+        }
+        rafRef.current=requestAnimationFrame(tick);
+      };
+      rafRef.current=requestAnimationFrame(tick);
+    }catch(e){setCamErr('Camera access denied. Allow permissions and try again.');}
+  },[processId]);
+
+  useEffect(()=>()=>stopCam(),[]);
+
+  return(
+    <div style={{padding:'1.1rem',maxWidth:'680px',margin:'0 auto'}}>
+      {overlay&&<ScanOverlay result={overlay} onClose={()=>setOverlay(null)}/>}
+
+      {/* Session stats */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px',marginBottom:'12px'}}>
+        {[{l:'Total',v:stats.total,c:'var(--blue)'},{l:'Check-Ins',v:stats.ins,c:'var(--green)'},{l:'Check-Outs',v:stats.outs,c:'var(--amber)'},{l:'Errors',v:stats.errors,c:'var(--red)'}].map(s=>(
+          <div key={s.l} className="card-sm" style={{textAlign:'center',padding:'9px 5px'}}>
+            <div style={{fontSize:'22px',fontWeight:900,color:s.c,lineHeight:1}}>{s.v}</div>
+            <div style={{fontSize:'9.5px',fontWeight:700,color:'var(--t2)',marginTop:'3px',letterSpacing:'.5px'}}>{s.l.toUpperCase()}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Camera */}
+      <div className="card" style={{padding:0,overflow:'hidden',marginBottom:'11px'}}>
+        <div className="cam-box">
+          <video ref={videoRef} style={{width:'100%',height:'100%',objectFit:'cover',display:active?'block':'none'}} playsInline muted/>
+          <canvas ref={canvasRef} style={{display:'none'}}/>
+          {!active&&<div style={{textAlign:'center',color:'var(--t3)',padding:'2rem'}}>
+            <div style={{fontSize:'68px',marginBottom:'1rem',animation:'float 4s ease-in-out infinite'}}>📷</div>
+            <div style={{fontSize:'16px',fontWeight:700,color:'var(--t2)'}}>Scanner Ready</div>
+            <div style={{fontSize:'12px',marginTop:'5px'}}>Tap Start to activate camera</div>
+          </div>}
+          {active&&<div className="cam-overlay">
+            <div className="scan-frame">
+              <div className="sf-corner sf-tl"/><div className="sf-corner sf-tr"/>
+              <div className="sf-corner sf-bl"/><div className="sf-corner sf-br"/>
+              <div className="scan-beam"/>
+            </div>
+          </div>}
+          {active&&<div style={{position:'absolute',top:'11px',right:'11px',background:'rgba(220,38,38,.88)',borderRadius:'20px',padding:'5px 11px',display:'flex',alignItems:'center',gap:'5px',backdropFilter:'blur(4px)'}}>
+            <span className="dot dot-green" style={{width:'7px',height:'7px',animation:'blink 1s infinite'}}/>
+            <span style={{color:'#fff',fontSize:'10px',fontWeight:800,letterSpacing:'1.5px'}}>LIVE</span>
+          </div>}
+          {active&&me&&<div style={{position:'absolute',bottom:'11px',left:'11px',background:'rgba(0,0,0,.65)',borderRadius:'9px',padding:'5px 11px',backdropFilter:'blur(4px)'}}>
+            <span style={{color:'rgba(255,255,255,.7)',fontSize:'11px'}}>📍 {me.name}</span>
+          </div>}
+        </div>
+        <div style={{padding:'1.1rem'}}>
+          {camErr&&<div style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)',borderRadius:'9px',padding:'10px 13px',marginBottom:'11px',color:'#fca5a5',fontSize:'13px',lineHeight:1.65}}>⚠️ {camErr}</div>}
+          <button onClick={active?stopCam:startCam} className={`btn ${active?'btn-danger':'btn-primary'} btn-lg w-full`}>
+            {active?'⏹  Stop Scanner':'▶  Start Camera Scanner'}
+          </button>
+          {active&&<p style={{textAlign:'center',color:'var(--t3)',fontSize:'12px',marginTop:'8px'}}>🎯 Point camera at an AttendQR code</p>}
+        </div>
+      </div>
+
+      {/* Demo simulation */}
+      <div className="card mb-2">
+        <p className="lbl">Demo — Simulate QR Scan</p>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'7px',marginBottom:'11px'}}>
+          {users.filter(u=>u.role!=='scanner'&&u.active!==false).map(u=>{
+            const td=TODAY(),ul=logs.filter(l=>l.userId===u.id&&l.date===td),last=ul[ul.length-1];
+            const isIn=last?.status==='check-in';const c=ROLE_C[u.role]||'#64748b';
+            return(
+              <button key={u.id} onClick={()=>processId(u.id)} style={{background:`${c}12`,border:`1px solid ${c}28`,borderRadius:'20px',padding:'6px 13px',color:c,fontSize:'12px',fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',transition:'.15s'}}
+                onMouseEnter={e=>e.currentTarget.style.background=`${c}22`} onMouseLeave={e=>e.currentTarget.style.background=`${c}12`}>
+                <span className={`dot ${isIn?'dot-green':'dot-gray'}`} style={{width:'6px',height:'6px'}}/>
+                {u.name.split(' ')[0]}
+              </button>
+            );
+          })}
+        </div>
+        <form onSubmit={e=>{e.preventDefault();if(manId.trim()){processId(manId.trim());setManId('');}}} style={{display:'flex',gap:'7px'}}>
+          <input type="text" value={manId} onChange={e=>setManId(e.target.value)} placeholder="Manual User ID (e.g. U002)" className="input-raw" style={{flex:1}}/>
+          <button type="submit" className="btn btn-ghost">Scan ↵</button>
+        </form>
+      </div>
+
+      {/* Recent scans */}
+      {recent.length>0&&<div className="card">
+        <p className="lbl">Session Activity ({recent.length})</p>
+        {recent.map((r,i)=>{const c=r.status==='check-in'?'var(--green)':'var(--amber)';return(
+          <div key={r.id||i} style={{display:'flex',alignItems:'center',gap:'9px',padding:'8px 9px',background:'rgba(255,255,255,.02)',borderRadius:'9px',marginBottom:'5px',borderLeft:`3px solid ${c}`}}>
+            <span style={{fontSize:'13px'}}>{r.status==='check-in'?'↓':'↑'}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <span style={{fontWeight:700,fontSize:'13px'}}>{r.name}</span>
+              <span style={{color:'var(--t2)',fontSize:'11px',marginLeft:'7px'}}>{r.dept}</span>
+            </div>
+            <span className="badge" style={{background:`${c}18`,color:c}}>{r.status==='check-in'?'IN':'OUT'}</span>
+            <span style={{color:'var(--t3)',fontSize:'11px',flexShrink:0}}>{FT(r.time)}</span>
+          </div>
+        );})}
+      </div>}
+    </div>
+  );
+};
+/* ══════════════════════════════════════════════════════════════
+   MY QR PAGE
+══════════════════════════════════════════════════════════════ */
+const MyQRPage=({user,logs})=>{
+  const td=TODAY();
+  const myLogs=logs.filter(l=>l.userId===user.id);
+  const todayLogs=myLogs.filter(l=>l.date===td);
+  const last=todayLogs[todayLogs.length-1];
+  const isIn=last?.status==='check-in';
+  const roleC=ROLE_C[user.role]||'#64748b';
+  return(
+    <div style={{padding:'1.4rem',maxWidth:'500px',margin:'0 auto'}}>
+      <div className="card" style={{textAlign:'center',marginBottom:'11px'}}>
+        <div style={{display:'inline-flex',alignItems:'center',gap:'6px',background:isIn?'rgba(34,197,94,.1)':'rgba(100,116,139,.1)',border:`1px solid ${isIn?'rgba(34,197,94,.22)':'var(--brd)'}`,borderRadius:'20px',padding:'5px 14px',marginBottom:'1.1rem'}}>
+          <span className={`dot ${isIn?'dot-green dot-pulse':'dot-gray'}`}/>
+          <span style={{fontSize:'12px',fontWeight:700,color:isIn?'var(--green)':'var(--t2)'}}>
+            {isIn?`Checked In · ${AGO(last.time)} min ago`:last?'Checked Out':'Not Checked In Today'}
+          </span>
+        </div>
+        <Avatar user={user} size={66}/>
+        <h2 style={{fontSize:'23px',fontWeight:900,letterSpacing:'-1px',marginTop:'12px',marginBottom:'3px'}}>{user.name}</h2>
+        <p style={{color:'var(--t2)',fontSize:'12.5px',marginBottom:'5px'}}>{user.id} · {user.dept}</p>
+        <Badge role={user.role} label={user.role}/>
+        <div style={{height:'18px'}}/>
+        <div style={{background:'#fff',borderRadius:'18px',padding:'1.3rem',display:'inline-block',marginBottom:'.9rem',boxShadow:'0 14px 44px rgba(0,0,0,.55)'}}>
+          <QRBox value={ENCODE(user.id)} size={196}/>
+        </div>
+        <p style={{color:'var(--t3)',fontSize:'12px',marginBottom:'1.4rem'}}>🔳 Present at any AttendQR terminal</p>
+        <div style={{background:'rgba(255,255,255,.025)',borderRadius:'10px',padding:'7px 12px',marginBottom:'1.4rem',border:'1px solid var(--brd)'}}>
+          <p className="lbl" style={{marginBottom:'3px'}}>Encoded QR Value</p>
+          <p className="font-mono" style={{color:'var(--t2)',fontSize:'10px',wordBreak:'break-all',lineHeight:1.7}}>{ENCODE(user.id).slice(0,55)}…</p>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'9px',marginBottom:'1.2rem'}}>
+          {[{l:'All Scans',v:myLogs.length,c:'var(--blue)'},{l:'Today',v:todayLogs.length,c:'var(--green)'},{l:'Sessions',v:myLogs.filter(l=>l.status==='check-out').length,c:'var(--purple)'}].map(s=>(
+            <div key={s.l} style={{background:'rgba(255,255,255,.03)',borderRadius:'11px',padding:'11px 7px',border:'1px solid var(--brd)'}}>
+              <div style={{fontSize:'21px',fontWeight:900,color:s.c}}>{s.v}</div>
+              <div style={{fontSize:'9.5px',fontWeight:700,color:'var(--t2)',marginTop:'3px',letterSpacing:'.5px'}}>{s.l.toUpperCase()}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{background:'rgba(255,255,255,.025)',borderRadius:'12px',padding:'1rem',textAlign:'left',border:'1px solid var(--brd)'}}>
+          {[['🏢 Department',user.dept],['📧 Email',user.email],['📱 Phone',user.phone],['📅 Joined',user.joined],['🔑 Role',user.role]].map(([k,v])=>(
+            <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+              <span style={{color:'var(--t2)',fontSize:'12.5px'}}>{k}</span>
+              <span style={{fontSize:'12.5px',fontWeight:600,textTransform:'capitalize'}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {todayLogs.length>0&&<div className="card">
+        <p className="lbl">Today's Attendance</p>
+        {todayLogs.map((l,i)=>{
+          const c=l.status==='check-in'?'var(--green)':'var(--amber)';
+          const next=todayLogs[i+1];
+          const dur=l.status==='check-in'&&next?next.time-l.time:null;
+          return(
+            <div key={l.id} style={{display:'flex',gap:'11px',padding:'9px',background:'rgba(255,255,255,.02)',borderRadius:'9px',marginBottom:'5px',borderLeft:`3px solid ${c}`}}>
+              <span style={{fontSize:'18px'}}>{l.status==='check-in'?'🟢':'🟡'}</span>
+              <div style={{flex:1}}>
+                <div style={{color:c,fontSize:'13px',fontWeight:700,textTransform:'capitalize'}}>{l.status==='check-in'?'Check-In':'Check-Out'}</div>
+                <div style={{color:'var(--t2)',fontSize:'11px'}}>{FT(l.time)}</div>
+                {dur&&<div style={{color:'var(--t3)',fontSize:'11px',marginTop:'1px'}}>Session: {DUR(dur)}</div>}
+              </div>
+              <span style={{color:'var(--t3)',fontSize:'11px',flexShrink:0}}>{l.scanner}</span>
+            </div>
+          );
+        })}
+      </div>}
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   PROFILE PAGE
+══════════════════════════════════════════════════════════════ */
+const ProfilePage=({user,users,setUsers,onLogout})=>{
+  const[editing,setEditing]=useState(false);
+  const[form,setForm]=useState({name:user.name,email:user.email,phone:user.phone,dept:user.dept});
+  const[pwForm,setPwForm]=useState({old:'',np:'',confirm:''});
+  const[toast,setToast]=useState(null);
+  const saveProfile=e=>{e.preventDefault();setUsers(p=>p.map(u=>u.id===user.id?{...u,...form}:u));setEditing(false);setToast({msg:'Profile updated!',type:'success'});};
+  const changePw=e=>{
+    e.preventDefault();
+    if(pwForm.old!==user.password)return setToast({msg:'Current password incorrect.',type:'error'});
+    if(pwForm.np!==pwForm.confirm)return setToast({msg:'New passwords do not match.',type:'error'});
+    if(pwForm.np.length<6)return setToast({msg:'Password must be at least 6 characters.',type:'error'});
+    setUsers(p=>p.map(u=>u.id===user.id?{...u,password:pwForm.np}:u));
+    setPwForm({old:'',np:'',confirm:''});setToast({msg:'Password changed successfully!',type:'success'});
+  };
+  return(
+    <div style={{padding:'1.4rem',maxWidth:'540px',margin:'0 auto'}}>
+      {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
+      <div className="card mb-2" style={{textAlign:'center',position:'relative'}}>
+        <button onClick={()=>setEditing(!editing)} className="btn btn-ghost btn-sm" style={{position:'absolute',top:'1rem',right:'1rem'}}>{editing?'Cancel':'✏️ Edit'}</button>
+        <Avatar user={{...user}} size={68}/>
+        <h2 style={{fontSize:'22px',fontWeight:900,letterSpacing:'-.5px',marginTop:'12px',marginBottom:'3px'}}>{user.name}</h2>
+        <p style={{color:'var(--t2)',fontSize:'12.5px',marginBottom:'7px'}}>{user.username} · {user.id}</p>
+        <Badge role={user.role} label={user.role}/>
+      </div>
+      {editing?(
+        <div className="card mb-2" style={{borderColor:'rgba(34,197,94,.18)'}}>
+          <p className="lbl" style={{color:'var(--green)',marginBottom:'12px'}}>Edit Profile</p>
+          <form onSubmit={saveProfile}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'11px',marginBottom:'12px'}}>
+              {[['name','Full Name','text'],['email','Email','email'],['phone','Phone','tel'],['dept','Department','text']].map(([k,l,t])=>(
+                <div className="field" key={k}><label>{l}</label><input type={t} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))}/></div>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:'8px'}}><button type="submit" className="btn btn-success">Save</button><button type="button" onClick={()=>setEditing(false)} className="btn btn-ghost">Cancel</button></div>
+          </form>
+        </div>
+      ):(
+        <div className="card mb-2">
+          <p className="lbl mb-2">Profile Details</p>
+          {[['Full Name',user.name],['Username',user.username],['Department',user.dept],['Email',user.email],['Phone',user.phone],['Join Date',user.joined]].map(([k,v])=>(
+            <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+              <span style={{color:'var(--t2)',fontSize:'12.5px'}}>{k}</span>
+              <span style={{fontSize:'12.5px',fontWeight:600}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="card mb-2">
+        <p className="lbl mb-2">Change Password</p>
+        <form onSubmit={changePw}>
+          {[['old','Current Password'],['np','New Password'],['confirm','Confirm Password']].map(([k,l])=>(
+            <div className="field mb-2" key={k}><label>{l}</label><input type="password" value={pwForm[k]} onChange={e=>setPwForm(p=>({...p,[k]:e.target.value}))} required/></div>
+          ))}
+          <button type="submit" className="btn btn-primary">Update Password</button>
+        </form>
+      </div>
+      <button onClick={onLogout} className="btn btn-danger w-full" style={{padding:'13px',fontSize:'14px'}}>🚪 Sign Out</button>
+    </div>
+  );
+};
+/* ══════════════════════════════════════════════════════════════
+   ADMIN PANEL
+══════════════════════════════════════════════════════════════ */
+const AdminPanel=({users,setUsers,logs,setLogs,me})=>{
+  const[tab,setTab]=useState('dashboard');
+  const[flt,setFlt]=useState({date:TODAY(),name:'',status:'',dept:'',role:''});
+  const[showAdd,setShowAdd]=useState(false);
+  const[nu,setNu]=useState({username:'',password:'',name:'',dept:'',role:'staff',email:'',phone:''});
+  const[gsync,setGsync]=useState(false);
+  const[lastSync,setLastSync]=useState(Date.now());
+  const[toast,setToast]=useState(null);
+  const[gsStatus,setGsStatus]=useState(GS_CONFIG.ENABLED?'connected':'disabled');
+  const td=TODAY();
+  const todayLogs=useMemo(()=>logs.filter(l=>l.date===td),[logs,td]);
+  const staff=useMemo(()=>users.filter(u=>u.role!=='scanner'),[users]);
+  const depts=useMemo(()=>[...new Set(users.map(u=>u.dept))],[users]);
+  const activeNow=useMemo(()=>staff.filter(u=>{const ul=todayLogs.filter(l=>l.userId===u.id);return ul.length>0&&ul[ul.length-1].status==='check-in';}), [staff,todayLogs]);
+  const uniqueToday=useMemo(()=>new Set(todayLogs.map(l=>l.userId)).size,[todayLogs]);
+
+  const filteredLogs=useMemo(()=>logs.filter(l=>{
+    if(flt.date&&l.date!==flt.date)return false;
+    if(flt.name&&!l.name.toLowerCase().includes(flt.name.toLowerCase()))return false;
+    if(flt.status&&l.status!==flt.status)return false;
+    if(flt.dept&&l.dept!==flt.dept)return false;
+    if(flt.role&&l.role!==flt.role)return false;
+    return true;
+  }).reverse(),[logs,flt]);
+
+  const handleXLS=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const data=XLSX.utils.sheet_to_json(ws);
+        const imported=data.map((r,i)=>({id:r['User ID']||r.userid||`U${Date.now()+i}`,username:r.Username||r.username||'',password:r.Password||r.password||'Pass@123',name:r.Name||r.name||'',dept:r.Department||r.dept||'General',role:(r.Role||r.role||'staff').toLowerCase(),email:r.Email||r.email||'',phone:r.Phone||r.phone||'',joined:r.JoinDate||r.joindate||TODAY(),active:true}));
+        setUsers(prev=>{const m=[...prev];imported.forEach(nu=>{const idx=m.findIndex(u=>u.username===nu.username||u.id===nu.id);if(idx>=0)m[idx]={...m[idx],...nu};else m.push(nu);});return m;});
+        setToast({msg:`✅ ${imported.length} users imported!`,type:'success'});
+      }catch(e){setToast({msg:'❌ Parse error — check column headers.',type:'error'});}
+    };
+    reader.readAsBinaryString(file);e.target.value='';
+  };
+
+  const exportCSV=()=>{
+    const rows=[['Log ID','User ID','Name','Dept','Role','Status','Date','Time','Scanner','Duration'],...filteredLogs.map(l=>[l.id,l.userId,l.name,l.dept,l.role||'staff',l.status,l.date,FT(l.time),l.scanner||'',l.duration?DUR(l.duration):''])];
+    const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\ufeff'+encodeURIComponent(csv);a.download=`attendance_${flt.date||'all'}.csv`;a.click();
+    setToast({msg:'Report exported!',type:'success'});
+  };
+
+  const addUser=async e=>{
+    e.preventDefault();
+    if(users.find(u=>u.username===nu.username)){return setToast({msg:'Username already exists.',type:'error'});}
+    const id=`U${Date.now()}`;const newU={...nu,id,joined:TODAY(),active:true};
+    setUsers(p=>[...p,newU]);
+    await GS.addUser(newU);
+    setNu({username:'',password:'',name:'',dept:'',role:'staff',email:'',phone:''});setShowAdd(false);
+    setToast({msg:`User ${newU.name} added!`,type:'success'});
+  };
+
+  const toggleUser=async id=>{
+    setUsers(p=>p.map(u=>u.id===id?{...u,active:!u.active}:u));
+    const u=users.find(x=>x.id===id);if(u)await GS.updateUser({...u,active:!u.active});
+  };
+  const removeUser=async id=>{
+    if(!confirm('Permanently remove this user and all their data?'))return;
+    setUsers(p=>p.filter(u=>u.id!==id));
+    await GS.deleteUser(id);setToast({msg:'User removed.',type:'info'});
+  };
+  const resetToday=()=>{if(!confirm('Clear all attendance logs for today?'))return;setLogs(p=>p.filter(l=>l.date!==TODAY()));setToast({msg:'Today\'s logs cleared.',type:'info'});};
+
+  const syncNow=async()=>{
+    setGsync(true);
+    const ok=await GS.test();
+    setGsync(false);setLastSync(Date.now());
+    if(ok){setGsStatus('connected');setToast({msg:'✅ Google Sheets sync successful!',type:'success'});}
+    else{setGsStatus('error');setToast({msg:'⚠️ Sync failed. Check your API URL.',type:'error'});}
+  };
+
+  const NAV=[
+    {id:'dashboard',ic:'📊',lb:'Dashboard'},{id:'live',ic:'🟢',lb:'Live Monitor'},
+    {id:'logs',ic:'📋',lb:'Logs'},{id:'users',ic:'👥',lb:'Users'},
+    {id:'qr',ic:'🔳',lb:'QR Codes'},{id:'sheets',ic:'📄',lb:'Google Sheets'},
+    {id:'reports',ic:'📈',lb:'Reports'},{id:'settings',ic:'⚙️',lb:'Settings'},
+  ];
+
+  return(
+    <div style={{display:'flex',minHeight:'calc(100vh - 58px)'}}>
+      {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
+      {/* SIDEBAR */}
+      <aside className="sidebar">
+        <p className="sb-section" style={{marginTop:'10px'}}>Main</p>
+        {NAV.slice(0,3).map(n=><button key={n.id} className={`sb-btn${tab===n.id?' active':''}`} onClick={()=>setTab(n.id)}><span className="sb-ic">{n.ic}</span>{n.lb}</button>)}
+        <p className="sb-section">Management</p>
+        {NAV.slice(3,6).map(n=><button key={n.id} className={`sb-btn${tab===n.id?' active':''}`} onClick={()=>setTab(n.id)}><span className="sb-ic">{n.ic}</span>{n.lb}</button>)}
+        <p className="sb-section">Analytics</p>
+        {NAV.slice(6).map(n=><button key={n.id} className={`sb-btn${tab===n.id?' active':''}`} onClick={()=>setTab(n.id)}><span className="sb-ic">{n.ic}</span>{n.lb}</button>)}
+        <div style={{flex:1}}/>
+        <div style={{padding:'13px',borderTop:'1px solid var(--brd)',marginTop:'14px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'5px',marginBottom:'4px'}}>
+            <span className={`dot ${gsStatus==='connected'?'dot-green dot-pulse':gsStatus==='error'?'dot-red':'dot-gray'}`}/>
+            <span style={{color:'var(--t3)',fontSize:'10px',fontWeight:700}}>{gsStatus==='connected'?'Google Sheets OK':gsStatus==='error'?'Sync Error':'Local Mode'}</span>
+          </div>
+          <div style={{color:'var(--t3)',fontSize:'9.5px'}}>{users.length} users · {logs.length} records</div>
+          <div style={{color:'var(--t3)',fontSize:'9.5px',marginTop:'2px'}}>Synced: {FT(lastSync)}</div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <main style={{flex:1,padding:'1.4rem',overflowY:'auto',background:'rgba(4,8,15,.6)',minWidth:0}}>
+
+        {/* ── DASHBOARD ── */}
+        {tab==='dashboard'&&<div className="anim-up">
+          <div className="between mb-3" style={{flexWrap:'wrap',gap:'10px'}}>
+            <div>
+              <h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px'}}>Dashboard</h2>
+              <p style={{color:'var(--t2)',fontSize:'12.5px',marginTop:'2px'}}>{FD(Date.now())}</p>
+            </div>
+            <div style={{display:'flex',gap:'7px',flexWrap:'wrap'}}>
+              <button onClick={syncNow} className="btn btn-success btn-sm">{gsync?<><Spinner size={12}/>Syncing…</>:'🔄 Sync Sheets'}</button>
+              <button onClick={()=>setTab('logs')} className="btn btn-ghost btn-sm">View All Logs</button>
+            </div>
+          </div>
+          {/* KPIs */}
+          <div className="grid-kpi mb-3">
+            {[{l:'Total Staff',v:staff.length,ic:'👥',c:'var(--blue)'},{l:'Present Today',v:uniqueToday,ic:'✅',c:'var(--green)'},{l:'Currently In',v:activeNow.length,ic:'🟢',c:'#10b981'},{l:'Absent',v:Math.max(0,staff.filter(u=>u.role==='staff').length-uniqueToday),ic:'🔴',c:'var(--red)'},{l:"Today's Scans",v:todayLogs.length,ic:'📡',c:'var(--purple)'}].map(s=>(
+              <div key={s.l} className="card-sm" style={{padding:'1rem'}}>
+                <div style={{fontSize:'20px',marginBottom:'7px'}}>{s.ic}</div>
+                <div style={{fontSize:'28px',fontWeight:900,color:s.c,lineHeight:1}}>{s.v}</div>
+                <div style={{fontSize:'9.5px',fontWeight:700,color:'var(--t2)',marginTop:'5px',letterSpacing:'.5px'}}>{s.l.toUpperCase()}</div>
+              </div>
+            ))}
+          </div>
+          {/* Currently in */}
+          {activeNow.length>0&&<div className="card mb-2" style={{borderColor:'rgba(34,197,94,.16)'}}>
+            <div className="flex gap-1 mb-2"><span className="dot dot-green dot-pulse"/><h3 style={{color:'var(--green)',fontSize:'12.5px',fontWeight:700}}>Currently on Premises ({activeNow.length})</h3></div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'7px'}}>
+              {activeNow.map(u=>{const ul=todayLogs.filter(l=>l.userId===u.id),last=ul[ul.length-1];return(
+                <div key={u.id} style={{display:'flex',alignItems:'center',gap:'7px',background:'rgba(34,197,94,.07)',border:'1px solid rgba(34,197,94,.14)',borderRadius:'22px',padding:'4px 11px 4px 6px'}}>
+                  <Avatar user={u} size={24}/><div><div style={{color:'var(--green)',fontSize:'11.5px',fontWeight:700}}>{u.name.split(' ')[0]}</div>{last&&<div style={{color:'#166534',fontSize:'9.5px'}}>{AGO(last.time)}m</div>}</div>
+                </div>
+              );})}
+            </div>
+          </div>}
+          {/* Recent activity */}
+          <div className="card">
+            <div className="between mb-2"><p className="lbl" style={{marginBottom:0}}>Recent Activity</p><button onClick={()=>setTab('logs')} className="btn btn-ghost btn-sm" style={{fontSize:'11px'}}>All →</button></div>
+            {todayLogs.length===0?<div className="empty"><span className="empty-ic">📋</span><p>No activity today</p></div>:
+            [...todayLogs].reverse().slice(0,12).map(l=>{const c=l.status==='check-in'?'var(--green)':'var(--amber)';return(
+              <div key={l.id} style={{display:'flex',alignItems:'center',gap:'9px',padding:'8px 9px',borderRadius:'9px',marginBottom:'4px',background:'rgba(255,255,255,.02)',borderLeft:`3px solid ${c}40`}}>
+                <span style={{fontSize:'13px'}}>{l.status==='check-in'?'↓':'↑'}</span>
+                <div style={{flex:1,minWidth:0}}><span style={{fontWeight:700,fontSize:'13px'}}>{l.name}</span><span style={{color:'var(--t2)',fontSize:'11px',marginLeft:'7px'}}>{l.dept}</span></div>
+                <span className="badge" style={{background:`${c}18`,color:c,flexShrink:0}}>{l.status==='check-in'?'IN':'OUT'}</span>
+                <span style={{color:'var(--t3)',fontSize:'11px',flexShrink:0}}>{FT(l.time)}</span>
+              </div>
+            );})}
+          </div>
+        </div>}
+
+        {/* ── LIVE MONITOR ── */}
+        {tab==='live'&&<div className="anim-up">
+          <div className="between mb-3">
+            <h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px'}}>Live Monitor</h2>
+            <div className="flex gap-1" style={{background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.15)',borderRadius:'20px',padding:'5px 12px'}}>
+              <span className="dot dot-green dot-pulse"/><span style={{color:'var(--green)',fontSize:'11.5px',fontWeight:700}}>Real-Time</span>
+            </div>
+          </div>
+          <div className="grid-users">
+            {staff.map(u=>{
+              const ul=todayLogs.filter(l=>l.userId===u.id);const last=ul[ul.length-1];
+              const isIn=last?.status==='check-in';const was=ul.length>0;
+              const sc=isIn?'var(--green)':was?'var(--amber)':'var(--t3)';
+              const sl=isIn?'IN':was?'OUT':'ABSENT';
+              return(
+                <div key={u.id} className="card" style={{display:'flex',alignItems:'center',gap:'11px',padding:'12px',borderColor:isIn?'rgba(34,197,94,.18)':was?'rgba(245,158,11,.1)':'var(--brd)'}}>
+                  <div style={{position:'relative',flexShrink:0}}>
+                    <Avatar user={u} size={44}/>
+                    <span style={{position:'absolute',bottom:'-2px',right:'-2px',width:'12px',height:'12px',borderRadius:'50%',background:sc,border:'2px solid var(--s2)'}}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="truncate" style={{fontWeight:700,fontSize:'13px'}}>{u.name}</div>
+                    <div style={{color:'var(--t2)',fontSize:'11px'}}>{u.dept}</div>
+                    {isIn&&last&&<div style={{color:'var(--green)',fontSize:'11px',marginTop:'2px'}}>In since {FT(last.time)}</div>}
+                    {!isIn&&last&&<div style={{color:'var(--amber)',fontSize:'11px',marginTop:'2px'}}>Left {AGO(last.time)}m ago</div>}
+                    {!was&&<div style={{color:'var(--t3)',fontSize:'11px',marginTop:'2px'}}>No activity today</div>}
+                  </div>
+                  <span className="badge" style={{background:`${sc}18`,color:sc,flexShrink:0}}>{sl}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>}
+
+        {/* ── LOGS ── */}
+        {tab==='logs'&&<div className="anim-up">
+          <div className="between mb-2" style={{flexWrap:'wrap',gap:'9px'}}>
+            <h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px'}}>Attendance Logs</h2>
+            <div style={{display:'flex',gap:'7px'}}>
+              <button onClick={resetToday} className="btn btn-danger btn-sm">🗑 Reset Today</button>
+              <button onClick={exportCSV} className="btn btn-success btn-sm">📥 Export CSV</button>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:'7px',marginBottom:'11px',flexWrap:'wrap'}}>
+            <input type="date" value={flt.date} onChange={e=>setFlt(f=>({...f,date:e.target.value}))} className="input-raw"/>
+            <input type="text" placeholder="Search name…" value={flt.name} onChange={e=>setFlt(f=>({...f,name:e.target.value}))} className="input-raw" style={{minWidth:'130px'}}/>
+            <select value={flt.status} onChange={e=>setFlt(f=>({...f,status:e.target.value}))} className="input-raw">
+              <option value="">All Status</option><option value="check-in">Check-In</option><option value="check-out">Check-Out</option>
+            </select>
+            <select value={flt.dept} onChange={e=>setFlt(f=>({...f,dept:e.target.value}))} className="input-raw">
+              <option value="">All Depts</option>{depts.map(d=><option key={d} value={d}>{d}</option>)}
+            </select>
+            {(flt.name||flt.status||flt.dept)&&<button onClick={()=>setFlt(f=>({...f,name:'',status:'',dept:''}))} className="btn btn-ghost btn-sm">Clear ×</button>}
+          </div>
+          {filteredLogs.length===0?<div className="card empty"><span className="empty-ic">📋</span><p>No matching records</p></div>:
+          <div className="tbl-wrap">
+            <div style={{overflowX:'auto'}}>
+              <table>
+                <thead><tr><th>Employee</th><th>Department</th><th>Role</th><th>Status</th><th>Time</th><th>Duration</th><th>Scanner</th></tr></thead>
+                <tbody>
+                  {filteredLogs.slice(0,200).map(l=>(
+                    <tr key={l.id}>
+                      <td><div style={{color:'var(--t1)',fontWeight:700}}>{l.name}</div><div className="font-mono" style={{fontSize:'10px',color:'var(--t3)'}}>{l.userId}</div></td>
+                      <td>{l.dept}</td>
+                      <td><Badge role={l.role} label={l.role||'staff'}/></td>
+                      <td><span className="badge" style={{background:l.status==='check-in'?'rgba(34,197,94,.12)':'rgba(245,158,11,.12)',color:l.status==='check-in'?'var(--green)':'var(--amber)'}}>{l.status==='check-in'?'↓ IN':'↑ OUT'}</span></td>
+                      <td style={{whiteSpace:'nowrap'}}>{FT(l.time)}</td>
+                      <td>{l.duration?DUR(l.duration):'—'}</td>
+                      <td style={{fontSize:'11.5px'}}>{l.scanner||'—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{padding:'8px 14px',background:'rgba(255,255,255,.02)',borderTop:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:'11.5px',color:'var(--t3)'}}>{filteredLogs.length} records{filteredLogs.length>200?' (first 200 shown)':''}</span>
+            </div>
+          </div>}
+        </div>}
+
+        {/* ── USERS ── */}
+        {tab==='users'&&<div className="anim-up">
+          <div className="between mb-2" style={{flexWrap:'wrap',gap:'9px'}}>
+            <h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px'}}>User Management</h2>
+            <div style={{display:'flex',gap:'7px',flexWrap:'wrap'}}>
+              <button onClick={()=>setShowAdd(!showAdd)} className="btn btn-success btn-sm">+ Add User</button>
+              <label className="btn btn-primary btn-sm" style={{cursor:'pointer'}}>📂 Import Excel<input type="file" accept=".xlsx,.xls" onChange={handleXLS} style={{display:'none'}}/></label>
+            </div>
+          </div>
+          <div className="card-sm mb-2" style={{background:'rgba(37,99,235,.06)',borderColor:'rgba(59,130,246,.15)'}}>
+            <p style={{color:'var(--blue)',fontSize:'12px',fontWeight:700,marginBottom:'3px'}}>📋 Excel Import Format</p>
+            <p className="font-mono" style={{color:'rgba(59,130,246,.55)',fontSize:'10.5px'}}>User ID | Username | Password | Name | Department | Role | Email | Phone | JoinDate</p>
+          </div>
+          {showAdd&&<div className="card mb-2" style={{borderColor:'rgba(34,197,94,.18)'}}>
+            <p className="lbl" style={{color:'var(--green)',marginBottom:'12px'}}>New User</p>
+            <form onSubmit={addUser}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:'10px',marginBottom:'11px'}}>
+                {[['name','Full Name','text',1],['username','Username','text',1],['password','Password','password',1],['dept','Department','text',1],['email','Email','email',0],['phone','Phone','tel',0]].map(([k,l,t,req])=>(
+                  <div className="field" key={k}><label>{l}{req?' *':''}</label><input type={t} value={nu[k]} onChange={e=>setNu(p=>({...p,[k]:e.target.value}))} required={!!req}/></div>
+                ))}
+                <div className="field"><label>Role *</label><select value={nu.role} onChange={e=>setNu(p=>({...p,role:e.target.value}))}>
+                  {['staff','manager','hr','admin','scanner'].map(r=><option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
+                </select></div>
+              </div>
+              <div style={{display:'flex',gap:'7px'}}><button type="submit" className="btn btn-success">Create</button><button type="button" onClick={()=>setShowAdd(false)} className="btn btn-ghost">Cancel</button></div>
             </form>
-        </section>
-
-        <!-- SCANNER VIEW -->
-        <section id="scanner-view" class="view-section space-y-6">
-            <div class="bg-slate-900 rounded-[2.5rem] p-4 shadow-2xl overflow-hidden aspect-square flex items-center justify-center">
-                <div id="reader" class="w-full"></div>
-            </div>
-            <div id="scan-feedback" class="bg-white p-6 rounded-3xl border border-slate-100 text-center shadow-sm min-h-[120px] flex flex-col justify-center">
-                <p class="text-slate-400 font-medium">Ready to scan QR codes</p>
-            </div>
-        </section>
-
-        <!-- ADMIN VIEW -->
-        <section id="admin-view" class="view-section space-y-6">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase mb-1">Registered</p>
-                    <p id="stat-total" class="text-3xl font-black">0</p>
-                </div>
-                <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase mb-1">Today</p>
-                    <p id="stat-today" class="text-3xl font-black">0</p>
-                </div>
-            </div>
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <div class="p-4 border-b border-slate-50 bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800">Recent Activity</h3>
-                </div>
-                <div id="activity-list" class="divide-y divide-slate-50 max-h-80 overflow-y-auto"></div>
-            </div>
-        </section>
-    </main>
-
-    <!-- NAVIGATION -->
-    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 px-6 py-3 z-30">
-        <div class="max-w-lg mx-auto flex justify-around">
-            <button onclick="switchView('scanner-view')" id="nav-scan" class="flex flex-col items-center gap-1 text-indigo-600">
-                <i class="ph-fill ph-qr-code text-2xl"></i>
-                <span class="text-[10px] font-bold uppercase tracking-widest">Scan</span>
-            </button>
-            <button onclick="switchView('admin-view')" id="nav-admin" class="flex flex-col items-center gap-1 text-slate-400">
-                <i class="ph ph-chart-bar text-2xl"></i>
-                <span class="text-[10px] font-bold uppercase tracking-widest">Admin</span>
-            </button>
-        </div>
-    </nav>
-
-    <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbxs_PujU5Dz0FGVqodwt5XXuvCfBBghi-AG31aRb-VcFz2Bn6YzG-4AbDFPiY_CkE0B/exec'; 
-
-        let allUsers = [
-            { userId: 'GUEST-1234', name: 'Test Guest', username: 'test', role: 'admin' }
-        ];
-        let allLogs = [];
-        let html5QrCode = null;
-        let isProcessing = false;
-
-        async function init() {
-            try {
-                const data = await apiCall('getState');
-                if (data) {
-                    allUsers = data.users || [];
-                    allLogs = data.logs || [];
-                }
-            } catch (e) {
-                console.warn("API Connection failed, using offline mode.");
-            } finally {
-                document.getElementById('loading-view').style.display = 'none';
-                checkAuth();
-            }
-        }
-
-        function checkAuth() {
-            const user = JSON.parse(localStorage.getItem('syncscan_user'));
-            if (!user) {
-                switchView('login-view');
-            } else {
-                document.getElementById('main-header').classList.remove('hidden');
-                document.getElementById('bottom-nav').classList.remove('hidden');
-                document.getElementById('nav-username').innerText = user.name;
-                document.getElementById('nav-role').innerText = user.role;
-                if (user.role !== 'admin') document.getElementById('nav-admin').style.display = 'none';
-                switchView('scanner-view');
-            }
-        }
-
-        async function onScanSuccess(decodedText) {
-            if (isProcessing) return;
-            isProcessing = true;
-            
-            let idToFind = decodedText;
-            if (decodedText.startsWith('http')) {
-                try {
-                    const url = new URL(decodedText);
-                    idToFind = url.searchParams.get('id') || url.searchParams.get('guest') || idToFind;
-                } catch(e) {}
-            }
-
-            const feedback = document.getElementById('scan-feedback');
-            const user = allUsers.find(u => u.userId === idToFind);
-
-            if (user) {
-                feedback.innerHTML = `<div class="animate-pop-in"><h3 class="font-bold text-slate-900">${user.name}</h3><p class="text-green-600 font-bold uppercase text-xs">Logged</p></div>`;
-                showToast(`Welcome, ${user.name}`, "success");
-                // Match your Sheet headers: id, userId, type, status, message, timestamp
-                await apiCall('addScan', { 
-                    scan: {
-                        userId: user.userId,
-                        type: 'Entry',
-                        status: 'Success',
-                        message: `Checked in by ${JSON.parse(localStorage.getItem('syncscan_user')).name}`,
-                        timestamp: new Date().toISOString()
-                    }
-                });
-                // Refresh data to show in admin activity
-                const data = await apiCall('getState');
-                if(data) allLogs = data.logs || [];
-            } else {
-                feedback.innerHTML = `<div class="animate-pop-in"><h3 class="font-bold text-slate-900">Not Found</h3><p class="text-red-600 font-bold uppercase text-xs">ID: ${idToFind}</p></div>`;
-                showToast("Unknown QR", "error");
-            }
-
-            setTimeout(() => {
-                feedback.innerHTML = `<p class="text-slate-400 font-medium">Ready to scan next</p>`;
-                isProcessing = false;
-            }, 3000);
-        }
-
-        function switchView(viewId) {
-            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-            if (viewId === 'scanner-view') startScanner(); else stopScanner();
-            if (viewId === 'admin-view') renderAdmin();
-        }
-
-        function startScanner() {
-            if (html5QrCode) return;
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess)
-                .catch(() => showToast("Camera Error", "error"));
-        }
-
-        function stopScanner() {
-            if (html5QrCode) html5QrCode.stop().then(() => html5QrCode = null);
-        }
-
-        async function apiCall(action, payload = {}) {
-            try {
-                // If fetching state, use GET to simplify
-                const url = action === 'getState' ? `${API_URL}?action=getState` : API_URL;
-                const options = action === 'getState' ? {} : {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ action, ...payload })
-                };
-                const res = await fetch(url, options);
-                if (action === 'getState') return await res.json();
-                return { success: true };
-            } catch (e) { throw e; }
-        }
-
-        function renderAdmin() {
-            document.getElementById('stat-total').innerText = allUsers.length;
-            const today = new Date().toLocaleDateString();
-            const todayLogs = allLogs.filter(l => new Date(l.timestamp).toLocaleDateString() === today);
-            document.getElementById('stat-today').innerText = todayLogs.length;
-
-            const list = document.getElementById('activity-list');
-            list.innerHTML = allLogs.slice().reverse().map(log => {
-                const u = allUsers.find(user => user.userId === log.userId) || { name: log.userId };
-                return `
-                <div class="p-4 flex items-center justify-between">
-                    <div>
-                        <p class="font-bold text-sm text-slate-800">${u.name}</p>
-                        <p class="text-[10px] text-slate-400 uppercase font-bold">${new Date(log.timestamp).toLocaleTimeString()}</p>
+          </div>}
+          <div style={{display:'flex',flexDirection:'column',gap:'7px'}}>
+            {users.map(u=>{
+              const roleC=ROLE_C[u.role]||'#64748b';
+              const ul=todayLogs.filter(l=>l.userId===u.id);const last=ul[ul.length-1];const isIn=last?.status==='check-in';
+              return(
+                <div key={u.id} className="card" style={{display:'flex',alignItems:'center',gap:'11px',padding:'11px 14px',opacity:u.active===false?.5:1}}>
+                  <div style={{position:'relative',flexShrink:0}}>
+                    <Avatar user={u} size={42}/>
+                    {u.role!=='scanner'&&<span style={{position:'absolute',bottom:'-2px',right:'-2px',width:'11px',height:'11px',borderRadius:'50%',background:isIn?'var(--green)':last?'var(--amber)':'var(--t3)',border:'2px solid var(--s2)'}}/>}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap'}}>
+                      <span style={{fontWeight:700,fontSize:'13px'}}>{u.name}</span>
+                      <Badge role={u.role} label={u.role}/>
+                      {u.active===false&&<span className="badge" style={{background:'rgba(239,68,68,.1)',color:'#f87171'}}>DISABLED</span>}
                     </div>
-                    <span class="bg-green-50 text-green-600 text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">${log.type}</span>
-                </div>`;
-            }).join('');
-        }
+                    <div style={{color:'var(--t2)',fontSize:'11px',marginTop:'2px'}}>{u.username} · {u.dept} · <span className="font-mono" style={{fontSize:'10px'}}>{u.id}</span></div>
+                  </div>
+                  <div style={{display:'flex',gap:'5px',flexShrink:0}}>
+                    <button onClick={()=>toggleUser(u.id)} className="btn btn-ghost btn-sm" style={{fontSize:'11px'}}>{u.active===false?'Enable':'Disable'}</button>
+                    <button onClick={()=>removeUser(u.id)} className="btn btn-danger btn-sm" style={{fontSize:'11px'}}>✕</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>}
 
-        function handleLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById('login-user').value;
-            const user = allUsers.find(user => user.username === u || user.userId === u);
-            if (user) {
-                localStorage.setItem('syncscan_user', JSON.stringify(user));
-                location.reload();
-            } else {
-                showToast("Invalid Credentials", "error");
-            }
-        }
+        {/* ── QR CODES ── */}
+        {tab==='qr'&&<div className="anim-up">
+          <div className="between mb-3">
+            <h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px'}}>QR Codes</h2>
+            <span className="badge" style={{background:'rgba(34,197,94,.1)',color:'var(--green)',border:'1px solid rgba(34,197,94,.2)',fontSize:'11px',padding:'5px 12px'}}>{users.filter(u=>u.role!=='scanner').length} codes</span>
+          </div>
+          <div className="grid-qr">
+            {users.filter(u=>u.active!==false).map(u=>{const c=ROLE_C[u.role]||'#64748b';return(
+              <div key={u.id} className="card" style={{textAlign:'center',padding:'1.2rem'}}>
+                <div style={{background:'#fff',borderRadius:'14px',padding:'11px',display:'inline-block',marginBottom:'9px',boxShadow:'0 8px 28px rgba(0,0,0,.5)'}}>
+                  <QRBox value={ENCODE(u.id)} size={142}/>
+                </div>
+                <div style={{fontWeight:700,fontSize:'13px'}}>{u.name}</div>
+                <div className="font-mono" style={{color:'var(--t3)',fontSize:'9.5px',marginTop:'2px'}}>{u.id}</div>
+                <div style={{marginTop:'7px',padding:'3px',background:`${c}14`,borderRadius:'6px',color:c,fontSize:'9.5px',fontWeight:700,textTransform:'uppercase'}}>{u.dept}</div>
+              </div>
+            );})}
+          </div>
+        </div>}
 
-        function logout() {
-            localStorage.removeItem('syncscan_user');
-            location.reload();
-        }
+        {/* ── GOOGLE SHEETS ── */}
+        {tab==='sheets'&&<div className="anim-up">
+          <div className="between mb-3" style={{flexWrap:'wrap',gap:'10px'}}>
+            <div>
+              <h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px'}}>Google Sheets Sync</h2>
+              <p style={{color:'var(--t2)',fontSize:'12.5px',marginTop:'2px'}}>Real-time data synchronization</p>
+            </div>
+            <span className="badge" style={{background:`${gsStatus==='connected'?'rgba(34,197,94,.1)':gsStatus==='error'?'rgba(239,68,68,.1)':'rgba(100,116,139,.1)'}`,color:`${gsStatus==='connected'?'var(--green)':gsStatus==='error'?'var(--red)':'var(--t2)'}`,border:`1px solid ${gsStatus==='connected'?'rgba(34,197,94,.2)':gsStatus==='error'?'rgba(239,68,68,.2)':'var(--brd)'}`,fontSize:'11px',padding:'5px 12px'}}>
+              {gsStatus==='connected'?'● CONNECTED':gsStatus==='error'?'● SYNC ERROR':'○ LOCAL MODE'}
+            </span>
+          </div>
 
-        function showToast(msg, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type === 'success' ? 'success' : 'error'}`;
-            toast.innerText = msg;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
+          {!GS_CONFIG.ENABLED&&<div style={{background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.2)',borderRadius:'12px',padding:'14px 16px',marginBottom:'14px'}}>
+            <p style={{color:'var(--amber)',fontWeight:700,fontSize:'13px',marginBottom:'5px'}}>⚙️ Google Sheets Not Configured</p>
+            <p style={{color:'rgba(245,158,11,.7)',fontSize:'12px',lineHeight:1.65}}>
+              Open this HTML file, find <span className="font-mono" style={{background:'rgba(0,0,0,.3)',padding:'1px 5px',borderRadius:'3px'}}>GS_CONFIG</span> at the top of the script, set your Web App URL and change <span className="font-mono" style={{background:'rgba(0,0,0,.3)',padding:'1px 5px',borderRadius:'3px'}}>ENABLED: false</span> to <span className="font-mono" style={{background:'rgba(0,0,0,.3)',padding:'1px 5px',borderRadius:'3px'}}>ENABLED: true</span>.
+            </p>
+          </div>}
 
-        window.onload = init;
-    </script>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:'11px',marginBottom:'14px'}}>
+            {[{ic:'📋',n:'Attendance_Log_2024',s:`Last sync: ${FT(lastSync)}`,sub:`${logs.length} records`,c:'rgba(34,197,94,.15)',tc:'var(--green)'},
+              {ic:'👥',n:'Staff_Directory',s:`Last sync: ${FT(lastSync)}`,sub:`${users.length} users`,c:'rgba(59,130,246,.12)',tc:'var(--blue)'},
+              {ic:'📊',n:'Attendance_Summary',s:'Auto-generated daily',sub:'Charts & pivot tables',c:'rgba(139,92,246,.1)',tc:'var(--purple)'},
+              {ic:'📅',n:'Shift_Schedule',s:'Auto-calculated',sub:'Based on check-in times',c:'rgba(6,182,212,.1)',tc:'var(--cyan)'},
+            ].map(s=>(
+              <div key={s.n} className="card-sm" style={{borderColor:s.c}}>
+                <div style={{fontSize:'20px',marginBottom:'7px'}}>{s.ic}</div>
+                <div style={{color:s.tc,fontSize:'12.5px',fontWeight:700,marginBottom:'3px'}}>{s.n}</div>
+                <div style={{color:'var(--t2)',fontSize:'11px'}}>{s.s}</div>
+                <div style={{color:'var(--t3)',fontSize:'10px',marginTop:'2px'}}>{s.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{display:'flex',gap:'9px',marginBottom:'16px',flexWrap:'wrap'}}>
+            <button onClick={syncNow} className="btn btn-success">{gsync?<><Spinner size={14}/>Syncing…</>:'🔄 Sync Now'}</button>
+            <button onClick={()=>alert('In production: opens your live Google Sheet')} className="btn btn-ghost">Open Google Sheets ↗</button>
+            <button onClick={exportCSV} className="btn btn-ghost btn-sm">📥 Download CSV</button>
+          </div>
+
+          {/* Google Sheets live preview */}
+          <div style={{background:'#fff',borderRadius:'13px',overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,.45)'}}>
+            <div style={{background:'#1a73e8',padding:'9px 15px',display:'flex',alignItems:'center',gap:'9px'}}>
+              <span style={{fontSize:'16px'}}>📊</span>
+              <span style={{color:'#fff',fontSize:'13.5px',fontWeight:700}}>Attendance_Log_2024</span>
+              <span style={{marginLeft:'auto',background:'rgba(255,255,255,.2)',borderRadius:'4px',padding:'2px 8px',color:'#e0e0e0',fontSize:'10px'}}>Live Preview</span>
+            </div>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse',minWidth:'600px',fontSize:'12px',color:'#202124',fontFamily:'Arial,sans-serif'}}>
+                <thead><tr style={{background:'#e8f0fe'}}>
+                  {['#','User ID','Name','Dept','Status','Time','Date','Scanner','Duration'].map(h=>(
+                    <th key={h} style={{padding:'7px 11px',textAlign:'left',color:'#1a73e8',fontWeight:700,borderBottom:'2px solid #c5cae9',borderRight:'1px solid #e0e0e0',whiteSpace:'nowrap'}}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {logs.length===0?<tr><td colSpan="9" style={{padding:'2rem',textAlign:'center',color:'#9aa0a6'}}>No records yet — start scanning!</td></tr>:
+                  [...logs].reverse().slice(0,25).map((l,i)=>(
+                    <tr key={l.id} style={{background:i%2===0?'#fff':'#f8f9fa'}}>
+                      <td style={{padding:'6px 11px',color:'#9aa0a6',borderRight:'1px solid #e0e0e0'}}>{logs.length-i}</td>
+                      <td style={{padding:'6px 11px',fontWeight:700,color:'#1a73e8',fontFamily:'monospace',borderRight:'1px solid #e0e0e0'}}>{l.userId}</td>
+                      <td style={{padding:'6px 11px',borderRight:'1px solid #e0e0e0'}}>{l.name}</td>
+                      <td style={{padding:'6px 11px',color:'#5f6368',borderRight:'1px solid #e0e0e0'}}>{l.dept}</td>
+                      <td style={{padding:'6px 11px',borderRight:'1px solid #e0e0e0'}}>
+                        <span style={{background:l.status==='check-in'?'#e6f4ea':'#fef9e7',color:l.status==='check-in'?'#137333':'#b06000',padding:'2px 7px',borderRadius:'4px',fontSize:'10px',fontWeight:700,textTransform:'uppercase'}}>{l.status==='check-in'?'CHECK-IN':'CHECK-OUT'}</span>
+                      </td>
+                      <td style={{padding:'6px 11px',color:'#5f6368',borderRight:'1px solid #e0e0e0',whiteSpace:'nowrap'}}>{FT(l.time)}</td>
+                      <td style={{padding:'6px 11px',color:'#5f6368',borderRight:'1px solid #e0e0e0'}}>{l.date}</td>
+                      <td style={{padding:'6px 11px',color:'#5f6368',borderRight:'1px solid #e0e0e0'}}>{l.scanner||'—'}</td>
+                      <td style={{padding:'6px 11px',color:'#5f6368'}}>{l.duration?DUR(l.duration):'—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {logs.length>25&&<div style={{padding:'7px 13px',background:'#f8f9fa',borderTop:'1px solid #e0e0e0',color:'#9aa0a6',fontSize:'11px'}}>Showing 25 of {logs.length} records.</div>}
+          </div>
+        </div>}
+
+        {/* ── REPORTS ── */}
+        {tab==='reports'&&<div className="anim-up">
+          <div className="between mb-3"><h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px'}}>Reports & Analytics</h2>
+            <button onClick={exportCSV} className="btn btn-primary btn-sm">📥 Export CSV</button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(148px,1fr))',gap:'10px',marginBottom:'14px'}}>
+            {[{l:'Check-Ins Today',v:todayLogs.filter(l=>l.status==='check-in').length,c:'var(--green)'},{l:'Check-Outs Today',v:todayLogs.filter(l=>l.status==='check-out').length,c:'var(--amber)'},{l:'All-Time Scans',v:logs.length,c:'var(--purple)'},{l:'Attendance Rate',v:`${staff.filter(u=>u.role==='staff').length>0?Math.round(uniqueToday/staff.filter(u=>u.role==='staff').length*100):0}%`,c:'var(--blue)'}].map(s=>(
+              <div key={s.l} className="card-sm">
+                <div style={{fontSize:'26px',fontWeight:900,color:s.c,lineHeight:1}}>{s.v}</div>
+                <div style={{fontSize:'9.5px',fontWeight:700,color:'var(--t2)',marginTop:'6px',letterSpacing:'.5px'}}>{s.l.toUpperCase()}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card mb-2">
+            <p className="lbl mb-2">Department Attendance — Today</p>
+            {depts.filter(d=>staff.some(u=>u.dept===d)).map(d=>{
+              const ds=staff.filter(u=>u.dept===d);const att=new Set(todayLogs.filter(l=>l.dept===d).map(l=>l.userId)).size;
+              const pct=ds.length>0?Math.round(att/ds.length*100):0;
+              const bc=pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
+              return(<div key={d} style={{marginBottom:'12px'}}>
+                <div className="between" style={{marginBottom:'4px'}}>
+                  <span style={{fontSize:'12.5px',fontWeight:600}}>{d}</span>
+                  <span style={{color:bc,fontSize:'12.5px',fontWeight:700}}>{att}/{ds.length} ({pct}%)</span>
+                </div>
+                <div style={{height:'7px',background:'rgba(255,255,255,.06)',borderRadius:'4px',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${pct}%`,background:bc,borderRadius:'4px',transition:'width .8s ease'}}/>
+                </div>
+              </div>);
+            })}
+          </div>
+          <div className="card">
+            <p className="lbl mb-2">Top Attendees (All Time)</p>
+            {staff.map(u=>({u,cnt:logs.filter(l=>l.userId===u.id&&l.status==='check-in').length})).sort((a,b)=>b.cnt-a.cnt).slice(0,8).map(({u,cnt},i)=>(
+              <div key={u.id} style={{display:'flex',alignItems:'center',gap:'11px',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+                <span style={{color:'var(--t3)',fontSize:'13px',fontWeight:700,minWidth:'22px'}}>#{i+1}</span>
+                <Avatar user={u} size={30}/>
+                <div style={{flex:1}}><div style={{fontSize:'13px',fontWeight:700}}>{u.name}</div><div style={{color:'var(--t2)',fontSize:'11px'}}>{u.dept}</div></div>
+                <span style={{color:'var(--blue)',fontSize:'16px',fontWeight:900}}>{cnt}</span>
+              </div>
+            ))}
+          </div>
+        </div>}
+
+        {/* ── SETTINGS ── */}
+        {tab==='settings'&&<div className="anim-up">
+          <h2 style={{fontSize:'21px',fontWeight:900,letterSpacing:'-.5px',marginBottom:'1.4rem'}}>System Settings</h2>
+          <div style={{maxWidth:'520px'}}>
+            <div className="card mb-2">
+              <p className="lbl mb-2">Google Sheets Connection</p>
+              <div className="field mb-2"><label>Web App URL</label>
+                <input type="text" defaultValue={GS_CONFIG.URL} placeholder="https://script.google.com/macros/s/.../exec" readOnly style={{fontFamily:'monospace',fontSize:'11.5px'}}/>
+              </div>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                <button onClick={syncNow} className="btn btn-success btn-sm">{gsync?<><Spinner size={12}/>Testing…</>:'Test Connection'}</button>
+                <span className="badge" style={{background:`${gsStatus==='connected'?'rgba(34,197,94,.1)':'rgba(100,116,139,.1)'}`,color:gsStatus==='connected'?'var(--green)':'var(--t2)'}}>{GS_CONFIG.ENABLED?'Enabled':'Disabled (Local Mode)'}</span>
+              </div>
+            </div>
+            <div className="card mb-2">
+              <p className="lbl mb-2">Scan Configuration</p>
+              {[{l:'Cooldown between scans',d:`${COOLDOWN/1000}s — prevents duplicate scans`,on:true},{l:'Sound feedback',d:'Plays tones on success/warning/error',on:true},{l:'Real-time Sheets sync',d:'Logs pushed on every scan',on:GS_CONFIG.ENABLED},{l:'QR encryption',d:'HMAC-signed IDs prevent spoofing',on:true},{l:'Offline queue',d:'Queues scans when offline, syncs later',on:false}].map(s=>(
+                <div key={s.l} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+                  <div><div style={{fontSize:'13px',fontWeight:600}}>{s.l}</div><div style={{color:'var(--t3)',fontSize:'11px',marginTop:'2px'}}>{s.d}</div></div>
+                  <div style={{width:'38px',height:'21px',background:s.on?'var(--green)':'rgba(255,255,255,.1)',borderRadius:'20px',position:'relative',flexShrink:0,cursor:'default'}}>
+                    <div style={{position:'absolute',top:'2px',left:s.on?'19px':'2px',width:'17px',height:'17px',background:'#fff',borderRadius:'50%',transition:'left .2s'}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="card">
+              <p className="lbl mb-2" style={{color:'var(--red)'}}>Danger Zone</p>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                <button onClick={resetToday} className="btn btn-danger btn-sm">🗑 Clear Today's Logs</button>
+                <button onClick={()=>{if(confirm('Delete ALL attendance logs?'))setLogs([]);}} className="btn btn-danger btn-sm">⚠️ Clear All Logs</button>
+              </div>
+            </div>
+          </div>
+        </div>}
+      </main>
+    </div>
+  );
+};
+/* ══════════════════════════════════════════════════════════════
+   TOPBAR
+══════════════════════════════════════════════════════════════ */
+const Topbar=({me,page,setPage,onLogout})=>{
+  const[menu,setMenu]=useState(false);
+  const isAdmin=['admin','hr','manager'].includes(me?.role);
+  const canScan=['admin','scanner','manager','hr'].includes(me?.role);
+  const PAGES=[
+    {id:'scanner',ic:'📡',lb:'Scanner',show:canScan},
+    {id:'myqr',ic:'🔳',lb:'My QR',show:me?.role!=='scanner'},
+    {id:'admin',ic:'🎛️',lb:'Admin',show:isAdmin},
+    {id:'profile',ic:'👤',lb:'Profile',show:true},
+  ].filter(p=>p.show);
+  return(
+    <header className="topbar">
+      <div className="topbar-logo">📊</div>
+      <span style={{fontSize:'16px',fontWeight:800,marginRight:'6px'}}>Attend<span style={{color:'var(--blue)'}}>QR</span></span>
+      <nav className="nav-pill topbar-nav-desktop">
+        {PAGES.map(p=>(
+          <button key={p.id} className={`nav-item${page===p.id?' active':''}`} onClick={()=>setPage(p.id)}>
+            <span>{p.ic}</span>{p.lb}
+          </button>
+        ))}
+      </nav>
+      <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>
+        <div className="flex gap-1" style={{background:'rgba(34,197,94,.07)',border:'1px solid rgba(34,197,94,.14)',borderRadius:'20px',padding:'4px 10px'}}>
+          <span className="dot dot-green dot-pulse" style={{width:'6px',height:'6px'}}/>
+          <span style={{color:'var(--green)',fontSize:'10.5px',fontWeight:700}}>Live</span>
+        </div>
+        <div style={{position:'relative'}}>
+          <button onClick={()=>setMenu(!menu)} style={{background:'none',border:`1.5px solid ${ROLE_C[me?.role]||'#64748b'}35`,borderRadius:'50%',padding:0,cursor:'pointer',display:'flex'}}>
+            <Avatar user={me} size={32}/>
+          </button>
+          {menu&&(
+            <div style={{position:'absolute',top:'calc(100% + 8px)',right:0,background:'var(--s2)',border:'1px solid var(--brd2)',borderRadius:'13px',padding:'7px',minWidth:'170px',zIndex:200,boxShadow:'0 16px 48px rgba(0,0,0,.55)',animation:'slideDown .2s ease'}}>
+              <div style={{padding:'8px 10px',marginBottom:'4px',borderBottom:'1px solid var(--brd)'}}>
+                <div style={{fontSize:'13px',fontWeight:700}}>{me?.name}</div>
+                <div style={{fontSize:'10.5px',color:'var(--t2)',textTransform:'capitalize'}}>{me?.role} · {me?.dept}</div>
+              </div>
+              {PAGES.map(p=>(
+                <button key={p.id} onClick={()=>{setPage(p.id);setMenu(false);}} style={{width:'100%',background:'none',border:'none',padding:'8px 10px',color:'var(--t2)',fontSize:'12.5px',textAlign:'left',cursor:'pointer',borderRadius:'7px',display:'flex',gap:'7px',alignItems:'center'}}>
+                  {p.ic} {p.lb}
+                </button>
+              ))}
+              <div className="divider" style={{margin:'5px 0'}}/>
+              <button onClick={onLogout} style={{width:'100%',background:'rgba(239,68,68,.08)',border:'none',padding:'8px 10px',color:'#f87171',fontSize:'12.5px',textAlign:'left',cursor:'pointer',borderRadius:'7px',display:'flex',gap:'7px',alignItems:'center',fontWeight:700}}>
+                🚪 Sign Out
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE BOTTOM NAV
+══════════════════════════════════════════════════════════════ */
+const MobNav=({me,page,setPage})=>{
+  const isAdmin=['admin','hr','manager'].includes(me?.role);
+  const canScan=['admin','scanner','manager','hr'].includes(me?.role);
+  const items=[
+    {id:'scanner',ic:'📡',lb:'Scan',show:canScan},
+    {id:'myqr',ic:'🔳',lb:'My QR',show:me?.role!=='scanner'},
+    {id:'admin',ic:'🎛️',lb:'Admin',show:isAdmin},
+    {id:'profile',ic:'👤',lb:'Profile',show:true},
+  ].filter(p=>p.show);
+  return(
+    <nav className="mob-nav" style={{justifyContent:'space-around'}}>
+      {items.map(n=>(
+        <button key={n.id} onClick={()=>setPage(n.id)} style={{background:'none',border:'none',display:'flex',flexDirection:'column',alignItems:'center',gap:'2px',padding:'5px 12px',color:page===n.id?'var(--blue)':'var(--t2)',cursor:'pointer'}}>
+          <span style={{fontSize:'20px'}}>{n.ic}</span>
+          <span style={{fontSize:'9.5px',fontWeight:page===n.id?700:500}}>{n.lb}</span>
+        </button>
+      ))}
+    </nav>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   LIVE TICKER
+══════════════════════════════════════════════════════════════ */
+const Ticker=({logs,users})=>{
+  const td=TODAY();
+  const todayLogs=logs.filter(l=>l.date===td);
+  const activeNow=users.filter(u=>{const ul=todayLogs.filter(l=>l.userId===u.id);return ul.length>0&&ul[ul.length-1].status==='check-in';});
+  const items=[
+    `📊 ${todayLogs.length} scans today`,
+    `✅ ${new Set(todayLogs.map(l=>l.userId)).size} employees present`,
+    `🟢 ${activeNow.length} currently on premises`,
+    `👥 ${users.filter(u=>u.role!=='scanner').length} registered staff`,
+    ...todayLogs.slice(-4).map(l=>`${l.status==='check-in'?'↓':'↑'} ${l.name} — ${l.status==='check-in'?'Checked in':'Checked out'} at ${FT(l.time)}`),
+  ];
+  const doubled=[...items,...items];
+  return(
+    <div className="ticker-wrap">
+      <div className="ticker-inner">
+        {doubled.map((item,i)=>(
+          <span key={i} className="ticker-item">{item}<span className="ticker-dot" style={{marginLeft:'2.5rem'}}>◆</span></span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ROOT APP
+══════════════════════════════════════════════════════════════ */
+const App=()=>{
+  const[users,setUsersRaw]=useState(SEED_USERS);
+  const[logs,setLogsRaw]=useState(SEED_LOGS());
+  const[me,setMe]=useState(null);
+  const[page,setPage]=useState('login');
+  const[gsLoaded,setGsLoaded]=useState(false);
+
+  // Keep users and logs in sync
+  const setUsers=useCallback(upd=>setUsersRaw(p=>typeof upd==='function'?upd(p):upd),[]);
+  const setLogs=useCallback(upd=>setLogsRaw(p=>typeof upd==='function'?upd(p):upd),[]);
+
+  // On login, optionally load from Google Sheets
+  const handleLogin=useCallback(async user=>{
+    setMe(user);
+    const defaultPage=['admin','hr','manager'].includes(user.role)?'admin':user.role==='scanner'?'scanner':'myqr';
+    setPage(defaultPage);
+    // Try to load users & logs from GS on first login
+    if(GS_CONFIG.ENABLED&&!gsLoaded){
+      const [gsUsers,gsLogs]=await Promise.all([GS.getUsers(),GS.getLogs()]);
+      if(gsUsers?.length>0){
+        setUsers(gsUsers.map(u=>({id:u.userid,username:u.username,password:u.password,name:u.name,dept:u.department||u.dept||'',role:u.role,email:u.email,phone:u.phone,joined:u.joindate||u.joined||'',active:u.active!=='FALSE'})));
+      }
+      if(gsLogs?.length>0){
+        setLogs(gsLogs.map(l=>({id:l.logid,userId:l.userid,name:l.name,dept:l.department||l.dept||'',role:l.role,status:l.status,time:parseInt(l.timestamp)||Date.now(),date:l.date||TODAY(),scanner:l.scannedby||'',type:l.type||'success',duration:l.duration?parseInt(l.duration):null})));
+      }
+      setGsLoaded(true);
+    }
+  },[gsLoaded]);
+
+  const handleLogout=useCallback(()=>{setMe(null);setPage('login');},[]);
+
+  const handleScan=useCallback(async entry=>{
+    if(!entry)return;
+    setLogs(p=>[...p,entry]);
+    // Push to Google Sheets in background
+    if(GS_CONFIG.ENABLED)GS.addLog(entry).catch(e=>console.warn('[GS] addLog failed',e));
+  },[]);
+
+  // Always reflect latest user data for logged-in user
+  const currentMe=useMemo(()=>me?users.find(u=>u.id===me.id)||me:null,[me,users]);
+
+  if(!me||page==='login')return <LoginPage users={users} onLogin={handleLogin}/>;
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',minHeight:'100vh'}}>
+      <Topbar me={currentMe} page={page} setPage={setPage} onLogout={handleLogout}/>
+      <Ticker logs={logs} users={users}/>
+      <div style={{flex:1,overflowY:'auto',paddingBottom:'56px'}}>
+        {page==='scanner'&&<ScannerPage users={users} logs={logs} onScan={handleScan} me={currentMe}/>}
+        {page==='myqr'&&currentMe&&<MyQRPage user={currentMe} logs={logs}/>}
+        {page==='admin'&&['admin','hr','manager'].includes(currentMe?.role)&&(
+          <AdminPanel users={users} setUsers={setUsers} logs={logs} setLogs={setLogs} me={currentMe}/>
+        )}
+        {page==='profile'&&currentMe&&(
+          <ProfilePage user={currentMe} users={users} setUsers={u=>{setUsers(u);setMe(p=>users.find(x=>x.id===p.id)||p);}} onLogout={handleLogout}/>
+        )}
+      </div>
+      <MobNav me={currentMe} page={page} setPage={setPage}/>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
 </body>
 </html>
